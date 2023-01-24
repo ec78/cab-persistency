@@ -1,9 +1,13 @@
+// Data loading path
 fpath = "D:/development/GitHub/cab-persistency/clean-data/";
+
+// Data file
 fname = "comparison.csv";
 
-
+// Results saving paths
 spath = "D:/development/GitHub/cab-persistency/results/data_plots/reg_data/";
 spath2 = "D:/development/GitHub/cab-persistency/results/data_stats/";
+
 /*
 ** Perform import
 */
