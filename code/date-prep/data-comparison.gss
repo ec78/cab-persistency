@@ -1,0 +1,76 @@
+// Data loading paths and files
+fpath = "D:/development/GitHub/cab-persistency/clean-data/";
+fname = "CA_pt2.dta";
+fname2 = "current_account_full.dta";
+
+// Path for saving results
+spath = "D:/development/GitHub/cab-persistency/results/data_plots/";
+
+/*
+** Perform import
+*/
+// Original data
+CA_pt2 = loadd(fpath $+ fname, "str(country_name) + cat(cn) + date($date2) + pct_ca");
+CA_pt2 = delif(CA_pt2, ca_pt2[., "country_name"] .== "");
+ca_pt2[., "country_name"] = strtrim(ca_pt2[., "country_name"]);
+
+CA_pt2[., "pct_ca"] = 100*CA_pt2[., "pct_ca"];
+
+// New data
+ca_current = loadd(fpath $+ fname2, "str(countryname) + date($period) + ca");
+ca_current[., "countryname"] = strtrim(ca_current[., "countryname"]);
+
+// Country codes
+cn = loadd(fpath $+ "cnlist_complete.xls", "str(country_name) + str(ccode) + cn");
+cn[., "country_name"] = strtrim(cn[., "country_name"]);
+
+// Merge cn data with ca_current
+ca_current = outerJoin(ca_current, "countryname", cn, "country_name");
+
+keys1 = "country_name"$|"date2";
+keys2 = "countryname"$|"period";
+
+// Merge data
+data = outerJoin(CA_pt2[., "country_name" "date2" "pct_ca"], keys1, ca_current, keys2 , "full");
+data = sortmc(data, "country_name"$|"date2");
+
+// Get unique country codes
+ccodes = unique(ca_pt2[., "cn"]);
+
+// Get column labels for yarn_length
+{ cnames, keys } = getColLabels(data, "country_name");
+cnames = cnames[2:rows(cnames)];
+
+struct plotControl ctl;
+ctl = plotGetDefaults("xy");
+
+vars = { 3 4 };
+
+
+// Create plots
+for i(1, rows(cnames), 1);
+    
+    // Select data for country
+    e = data[., "country_name"] .== cnames[i];
+    tmp_data = selif(data[., vars], e);
+    tmp_date = selif(data[., "date2"], e);
+    
+    dstatmt(tmp_data);
+    
+    // Graph title
+    plotSetTitle(&ctl, cnames[i], "Arial", 18);
+    
+    // Legend
+    plotsetLegend(&ctl, "pct_ca"$|"New data", "outside bottom hcenter", 0);
+    plotXY(ctl, tmp_date, tmp_data);
+     
+    // Save plot
+    plotname = spath $+ cnames[i] $+ ".png";
+    plotSave(plotname, 800|600, "px");
+    
+    // New window
+    plotOpenWindow();
+
+endfor;
+
+

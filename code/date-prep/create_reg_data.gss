@@ -1,0 +1,95 @@
+fpath = "D:/development/GitHub/cab-persistency/clean-data/";
+fname = "comparison.csv";
+
+
+spath = "D:/development/GitHub/cab-persistency/results/data_plots/reg_data/";
+spath2 = "D:/development/GitHub/cab-persistency/results/data_stats/";
+/*
+** Perform import
+*/
+data = loadd(fpath$+fname, "cn + str(ccode) + str(cn_2) + date($date2) + pct_ca + pass(ca) + pct_ca_sa_2 + str(date3)");
+
+// Get unique country codes
+ccodes = unique(data[., "cn"]);
+
+// Get column labels 
+{ cnames, keys } = getColLabels(data, "cn_2");
+
+// Replace 'new' data with old
+// dateset when old dateset is longer
+pct_ca_reg = where(data[., "ca"] .== miss(), data[., "pct_ca_sa_2"], data[., "ca"]);
+reg_data = data~asDF(pct_ca_reg, "pct_ca_reg");
+reg_data = order(reg_data, "cn_2"$|"date2"$|"pct_ca_reg");
+
+// Create Data Plots
+//plotCABData(reg_data, "date2", "cn_2", "pct_ca_reg", spath);
+
+// Get summary table
+table_name = spath2 $+ "summary-reg-data.txt";
+output file=table_name on;
+sum_table = getCABSummary(reg_data, "date3", "cn_2", "pct_ca_reg");
+output off;
+
+proc (0) = plotCABData(data, time_var, group_var, reg_var, spath);
+    local grp_names, keys, e, tmp_data, tmp_date;
+    
+    // Get column labels 
+    { grp_names, keys } = getColLabels(data, group_var);
+    
+    struct plotControl ctl;
+    ctl = plotGetDefaults("xy");
+    
+    // Create plots
+    for i(1, rows(cnames), 1);
+    
+    // Select data for country
+    e = data[., group_var] .== grp_names[i];
+    tmp_data = selif(data[., reg_var], e);
+    tmp_date = selif(data[., time_var], e);
+
+    // Graph title
+    plotSetTitle(&ctl, cnames[i], "Arial", 18);
+    
+    // Legend
+    plotsetLegend(&ctl, reg_var, "outside bottom hcenter", 0);
+    plotXY(ctl, tmp_date, tmp_data);
+     
+    // Save plot
+    plotname = spath $+ cnames[i] $+ "_" $+ "reg_var" $+ ".png";
+    plotSave(plotname, 800|600, "px");
+    
+    // New window
+    plotOpenWindow();
+
+    endfor;
+endp;
+
+proc (1) = getCABSummary(reg_data, time_var, group_var, interest_var);
+    local sum_table, fmt, mean_ca, min_ca, max_ca, sd_ca, tmp_data, start_date, end_date, count_obs;    
+    
+    // Get variables and sort data
+    reg_data = sortc(reg_data, group_var$|time_var);
+    
+    
+    mean_ca = asDF(aggregate(reg_data[., interest_var group_var], "mean", group_var), "country", "Mean CAB/GDP%");
+    min_ca =  asDF(aggregate(reg_data[., interest_var group_var], "min", group_var), "country", "Min CAB/GDP%");
+    max_ca =  asDF(aggregate(reg_data[., interest_var group_var], "max", group_var), "country", "Max CAB/GDP%");
+    sd_ca =  asDF(aggregate(reg_data[., interest_var group_var], "sd", group_var), "country", "SD CAB/GDP%");
+
+    // Remove missing values to get accurate counts
+    // and time ranges
+    tmp_data = packr(reg_data[., interest_var time_var group_var]);
+    start_date = asDF(aggregate(tmp_data[., time_var group_var], "min", group_var), "country", "Start Date");
+    end_date = asDF(aggregate(tmp_data[., time_var group_var], "max", group_var), "country", "End Date");
+    
+    // Count observations by group
+    count_obs = counts(tmp_data[., group_var], unique(tmp_data[., group_var])); 
+
+    sum_table = mean_ca~min_ca[., 2]~max_ca[., 2]~sd_ca[., 2]~start_date[., 2]~end_date[., 2]~asDF(count_obs, "N");
+    
+    fmt = "%15s%15.4f%15s%15d";
+    sprintf("%15s", getcolnames(sum_table)');
+    sprintf(fmt, mean_ca[.,1], mean_ca[., 2]~min_ca[., 2]~max_ca[., 2]~sd_ca[., 2], start_date[., 2]~end_date[., 2], asDF(count_obs, "N"));
+    
+    retp(sum_table);
+endp;
