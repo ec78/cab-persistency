@@ -26,7 +26,7 @@ reg_data = order(reg_data, "cn_2"$|"date2"$|"pct_ca_reg");
 
 // Get summary table
 table_name = spath2 $+ "summary-reg-data.txt";
-output file=table_name on;
+output file=^table_name on;
 sum_table = getCABSummary(reg_data, "date3", "cn_2", "pct_ca_reg");
 output off;
 
