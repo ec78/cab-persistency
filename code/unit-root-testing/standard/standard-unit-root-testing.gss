@@ -1,0 +1,76 @@
+new;
+library tspdlib;
+
+// Data loading path
+fpath = "D:/development/GitHub/cab-persistency/data/";
+
+// Data file
+fname = "reg_data.gdat";
+
+// Results saving paths
+spath = "D:/development/GitHub/cab-persistency/results/unit-root-tests/standard/";
+spath2 = "D:/development/GitHub/cab-persistency/results/unit-root-tests/with-breaks/";
+
+/*
+** Perform import
+*/
+data = loadd(fpath$+fname);
+
+// Get unique country codes
+ccodes = unique(data[., "cn"]);
+
+// Get column labels 
+{ cnames, keys } = getColLabels(data, "Country");
+N = rows(cnames);
+
+/*
+** ADF testing
+*/
+tstat_adf = zeros(N,1), ;
+LM_kpss = tstat_adf;
+Zt_pp = tstat_adf;
+Za_pp = Zt_pp;
+tstat_LM = tstat_adf;
+
+lags_adf = zeros(N,1);
+lags_LM = lags_adf;
+cv_adf = zeros(N, 3);
+cv_kpss = cv_adf;
+cvZt_pp = cv_adf;
+cvZa_pp = cv_adf;
+cv_lm = cv_adf;
+
+reject_adf = zeros(N, 1);
+reject_kpss = reject_adf;
+reject_LM = reject_adf;
+reject_PP = reject_adf;
+
+for i(1, N, 1);
+    // Select data for country
+    e = data[., "Country"] .== cnames[i];
+    tmp_data = selif(data[., "pct_ca_reg"], e);
+    y_test = packr(tmp_data[., "pct_ca_reg"]);
+    
+    // ADF testing
+    { tstat_adf[i], lags_adf[i], cv_adf[i, .] } = ADF(y_test, 1);
+    if tstat_adf[i] <= cv_adf[i, 3];
+        reject_adf[i] = 0.10;
+    elseif tstat_adf[i] <= cv_adf[i, 2];
+        reject_adf[i] = 0.05;
+    elseif tstat_adf[i] <= cv_adf[i, 1];
+        reject_adf[i] = 0.01;
+    endif;
+        
+    // KPSS testing
+    { LM_kpss[i], cv_tmp } = LMkpss(y_test, 1);
+    cv_kpss[i, .] = cv_tmp';
+    
+    //PP testing
+    { Zt_pp[i], Za_pp[i], cvZt_pp[i, .], cvZa_pp[i, .]} = PP(y_test, 1);
+    
+    //LM testing
+    { tstat_LM[i], lags_LM[i], cv_LM[i, .] } = LM(y_test);
+endfor;
+
+    
+    //ADF_output = asDF(cnames, "Country")~asDF(tstat~p~cv, "tstat", "lags", "1%", "5%", "10%");

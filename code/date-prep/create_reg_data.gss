@@ -26,7 +26,7 @@ reg_data = data~asDF(pct_ca_reg, "pct_ca_reg");
 reg_data = order(reg_data, "cn_2"$|"date2"$|"pct_ca_reg");
 
 // Create Data Plots
-//plotCABData(reg_data, "date2", "cn_2", "pct_ca_reg", spath);
+plotCABData(reg_data, "date2", "cn_2", "pct_ca_reg", spath);
 
 // Get summary table
 table_name = spath2 $+ "summary-reg-data.txt";
@@ -34,8 +34,15 @@ output file=^table_name on;
 sum_table = getCABSummary(reg_data, "date3", "cn_2", "pct_ca_reg");
 output off;
 
+// Save regression data
+reg_data = dfname(move(reg_data), "Country", "cn_2");
+reg_data = reg_data[., "Country" "date2" "pct_ca_reg" "cn" "ccode" "date3"];
+reg_data[., "date3"] = asdate(reg_data[., "date3"], "%YQ%q");
+
+saved(reg_data, "data/reg_data.gdat");
+
 proc (0) = plotCABData(data, time_var, group_var, reg_var, spath);
-    local grp_names, keys, e, tmp_data, tmp_date;
+    local grp_names, keys, e, tmp_data, tmp_date, plotname;
     
     // Get column labels 
     { grp_names, keys } = getColLabels(data, group_var);
