@@ -25,17 +25,15 @@ ccodes = unique(data[., "cn"]);
 N = rows(cnames);
 
 // Turn saving on
-save_on = 1;
+save_on = 0;
 
 // Get start and end data
 tmp_data = packr(data);
 
-screen on;
-table_name = spath2 $+ "unit-root-tests.txt";
-output file=^table_name on;
+
+// Get start and end dates
 start_date = asDF(aggregate(packr(tmp_data[., "date3" "Country"]), "min", "Country"), "Country", "Start Date");
 end_date = asDF(aggregate(packr(tmp_data[., "date3" "Country"]), "max", "Country"), "Country", "End Date");
-screen off;
 
 /*
 ** Storage Matrices
@@ -143,8 +141,8 @@ screen on;
 str_stats_adf = addAsterisksToStats(tstat_adf, cv_adf, 1);
 str_stats_gls = addAsterisksToStats(tau_gls, cv_gls, 1);
 str_stats_kpss = addAsterisksToStats(LM_kpss, cv_kpss, 2);
-str_stats_Zt = addAsterisksToStats(Zt_pp, cvZt_pp, 2);
-str_stats_Za = addAsterisksToStats(Za_pp, cvZa_pp, 2);
+str_stats_Zt = addAsterisksToStats(Zt_pp, cvZt_pp, 1);
+str_stats_Za = addAsterisksToStats(Za_pp, cvZa_pp, 1);
 str_stats_LM = addAsterisksToStats(tstat_LM, cv_LM, 1);
 
 // Print the UR table
@@ -164,7 +162,7 @@ reject_adf_cts = _frequency(reject_adf, 1, 1, 1);
 reject_gls = asDf(reclassifyRejectionRates(reject_gls), "DFGLS Conclusion");
 reject_gls_cts = _frequency(reject_gls, 1, 1, 1);
 reject_kpss = asDF(reclassifyRejectionRates(reject_kpss), "KPSS Conclusion");
-reject_kpss = _frequency(reject_kpss, 1, 1, 1);
+reject_kpss_cts = _frequency(reject_kpss, 1, 1, 1);
 reject_Zt_pp = asDF(reclassifyRejectionRates(reject_Zt_pp), "ZT PP Conclusion");
 reject_Zt_pp_cts = _frequency(reject_Zt_pp, 1, 1, 1);
 reject_Za_pp = asDF(reclassifyRejectionRates(reject_Za_pp), "Za PP Conclusion");
@@ -207,7 +205,7 @@ ctl2 = plotGetDefaults("bar");
 plotOpenWindow();
 plotClearLayout();
 plotSetTitle(&ctl, "KPSS Test Results (%)");
-plotFreq(ctl, reject_adf, 1, 1);
+plotFreq(ctl, reject_kpss, 1, 1);
 
 if save_on;
     plotSave(spath $+ "stationarity-tests.png", 11 | 8.5, "in");
