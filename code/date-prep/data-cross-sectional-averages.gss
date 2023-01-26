@@ -23,38 +23,108 @@ ccodes = unique(data[., "cn"]);
 // Get averages by year
 data[., "pct_ca_reg"] = abs(data[., "pct_ca_reg"]);
 
-// Add IDC variable
-IDC = ((data[., "cn"] .== 111) .or (data[., "cn"] .== 112) .or (data[., "cn"] .== 122) .or (data[., "cn"] .== 124) .or
-       (data[., "cn"] .== 128) .or (data[., "cn"] .== 132) .or (data[., "cn"] .== 134) .or (data[., "cn"] .== 136) .or 
-       (data[., "cn"] .== 137) .or (data[., "cn"] .== 138) .or (data[., "cn"] .== 142) .or (data[., "cn"] .== 144) .or
-       (data[., "cn"] .== 146) .or (data[., "cn"] .== 156) .or (data[., "cn"] .== 158) .or (data[., "cn"] .== 172) .or
-       (data[., "cn"] .== 174) .or (data[., "cn"] .== 176) .or (data[., "cn"] .== 178) .or (data[., "cn"] .== 181) .or
-       (data[., "cn"] .== 182) .or (data[., "cn"] .== 184) .or (data[., "cn"] .== 193) .or (data[., "cn"] .== 196));
-
-// Add LDC variable
-LDC = .not IDC;
-
-// Add EMG
-EMG = ((data[., "cn"] .==186) .or (data[., "cn"] .==199) .or (data[., "cn"] .==213) .or
-       (data[., "cn"] .==223) .or (data[., "cn"] .==228) .or (data[., "cn"] .==233) .or
-       (data[., "cn"] .==248) .or (data[., "cn"] .==273) .or (data[., "cn"] .==293) .or
-       (data[., "cn"] .==299) .or (data[., "cn"] .==343) .or (data[., "cn"] .==369) .or
-       (data[., "cn"] .==436) .or (data[., "cn"] .==439) .or (data[., "cn"] .==469) .or
-       (data[., "cn"] .==513) .or (data[., "cn"] .==524) .or (data[., "cn"] .==528) .or
-       (data[., "cn"] .==532) .or (data[., "cn"] .==534) .or (data[., "cn"] .==536) .or
-       (data[., "cn"] .==542) .or (data[., "cn"] .==548) .or (data[., "cn"] .==564) .or
-       (data[., "cn"] .==566) .or (data[., "cn"] .==576) .or (data[., "cn"] .==578) .or
-       (data[., "cn"] .==616) .or (data[., "cn"] .==652) .or (data[., "cn"] .==662) .or
-       (data[., "cn"] .==664) .or (data[., "cn"] .==684) .or (data[., "cn"] .==686) .or
-       (data[., "cn"] .==694) .or (data[., "cn"] .==698) .or (data[., "cn"] .==744) .or
-       (data[., "cn"] .==918) .or (data[., "cn"] .==922) .or (data[., "cn"] .==924) .or
-       (data[., "cn"] .==935) .or (data[., "cn"] .==944) .or (data[., "cn"] .==946) .or
-       (data[., "cn"] .==961) .or (data[., "cn"] .==964));
-
-
-end;
+data = delif(data, data[., "date3"] .<"1960-01-01");
 
 // Collapse
 csa_ca = aggregate(data[., "pct_ca_reg" "date3"], "mean", "date3");
-csvar_ca = aggregate(sortc(data[., "pct_ca_reg" "date3"], 2), "variance", "date3");
+csvar_ca = aggregate(data[., "pct_ca_reg" "date2"], "variance", "date2");
 
+// Plot control struct
+struct plotControl ctl;
+ctl = plotGetDefaults("xy");
+
+// Set the first curve, 'y1' to the left y-axis
+// Set the second curve 'y2' to the right y-axis
+string which = { "left", "right" };
+plotSetWhichYAxis(&ctl, which);
+
+// Set the left y-axis range to between -5 and +15,
+// and the right y-axis to between -2 and +2
+plotSetYRange(&ctl, 0|10, 0|100);
+
+// Set up the line style
+plotSetLinePen(&ctl, 2, "black", 1|2);
+
+// Set up legend
+label = "Absolute Mean Value of Current Account (%GDP)"$|"Within Period Current Account (%GDP) Variance";
+plotSetLegend(&ctl, label, "bottom center outside", 0);
+
+// Create plots
+plotXY(ctl, csa_ca[.,"date3"], csa_ca[.,"pct_ca_reg"]~csvar_ca[., "pct_ca_reg"]);
+
+// Set up mean bars
+{ mean_1, dts_1, t_1 } = plotGetPeriodCABMean(data, "pct_ca_reg", "date3", "", "1975");
+{ mean_2, dts_2, t_2 } = plotGetPeriodCABMean(data, "pct_ca_reg", "date3", "1975", "1995");
+{ mean_3, dts_3, t_3 } = plotGetPeriodCABMean(data, "pct_ca_reg", "date3", "1995", "2008-09");
+
+struct plotControl plt;
+// Reset plotControl to default bar settings
+plt = plotGetDefaults("xy");
+
+// Set up the line style
+plotSetLinePen(&plt, 2, "red", 3|3|3);
+
+/*
+** Declare 'myAnnotation' to be an instance of a plotAnnotation
+** structure and fill it in with default values
+*/
+struct plotAnnotation myAnnotation;
+myAnnotation = annotationGetDefaults();
+
+annotationSetFont(&myAnnotation, "arial", 12, "black");
+
+// Add mean lines
+plotAddtshf(plt, dts_1, "years", ones(t_1,1)*mean_1);
+text1 = "Pre-1975, Mean = " $+ ntos(mean_1, 3);
+plotAddTextbox(myAnnotation, text1, asDate("1962"), mean_2);
+
+plotAddtshf(plt, dts_2, "years", ones(t_2,1)*mean_2);
+text2 = "1975-1994, Mean = " $+ ntos(mean_2, 3);
+plotAddTextbox(myAnnotation, text2, asDate("1978"), mean_3+0.5);
+
+plotAddtshf(plt, dts_3, "years", ones(t_3,1)*mean_3);
+text2 = "1995-Sep.2008, Mean = " $+ ntos(mean_3, 3);
+plotAddTextbox(myAnnotation, text2, asDate("1996"), 7);
+
+proc (3) = plotGetPeriodCABMean(data, interest_var, time_var, date1, date2);
+    local tmp_data, mean, dts, t;
+    
+    
+    if date1 $== "";
+        tmp_data = selif(data, data[., time_var] .< date2);
+    elseif date2 $== "";
+        tmp_data = selif(data, data[., time_var] .>= date1);
+    else;
+        tmp_data = selif(data, data[., time_var] .>= date1 .and data[., time_var] .<date2);
+    endif;
+    
+    // Get period mean
+    mean = meanc(tmp_data[., interest_var]);
+    
+    dts = unique(tmp_data[., time_var]);
+    t = rows(dts);
+    
+    retp(mean, dts, t);
+endp;
+
+/*
+** Add recession bars
+*/
+
+// Load US recession data
+fname= getGAUSSHome("examples/USREC.csv");
+usrec = loadd(fname, "date(date) + USREC");
+
+struct plotControl plt;
+// Reset plotControl to default bar settings
+plt = plotGetDefaults("bar");
+
+// Bar fill: solid, 15% opaque and gray
+plotSetFill(&plt, 1, 0.15, "gray");
+
+// Add legend item
+plotSetLegend(&plt, "Recession", "top left inside");
+
+// Add vertical bars to any location where
+// the second column of 'usrec' contains a 1
+//plotAddVBar(plt, usrec);
