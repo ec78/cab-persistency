@@ -15,62 +15,243 @@ spath2 = "D:/development/GitHub/cab-persistency/results/unit-root-tests/with-bre
 ** Perform import
 */
 data = loadd(fpath$+fname);
+data = asdate(move(data), "%YQ%q", "date3");
 
 // Get unique country codes
 ccodes = unique(data[., "cn"]);
 
-// Get column labels 
+// Get column labels
 { cnames, keys } = getColLabels(data, "Country");
 N = rows(cnames);
 
+// Turn saving on
+save_on = 1;
+
+// Get start and end data
+tmp_data = packr(data);
+
+screen on;
+table_name = spath2 $+ "unit-root-tests.txt";
+output file=^table_name on;
+start_date = asDF(aggregate(packr(tmp_data[., "date3" "Country"]), "min", "Country"), "Country", "Start Date");
+end_date = asDF(aggregate(packr(tmp_data[., "date3" "Country"]), "max", "Country"), "Country", "End Date");
+screen off;
+
 /*
-** ADF testing
+** Storage Matrices
 */
-tstat_adf = zeros(N,1), ;
+N_obs = zeros(N, 1);
+tstat_adf = zeros(N,1);
 LM_kpss = tstat_adf;
 Zt_pp = tstat_adf;
 Za_pp = Zt_pp;
 tstat_LM = tstat_adf;
+tau_gls = tstat_adf;
 
 lags_adf = zeros(N,1);
 lags_LM = lags_adf;
+lags_gls = lags_adf;
+
 cv_adf = zeros(N, 3);
 cv_kpss = cv_adf;
 cvZt_pp = cv_adf;
 cvZa_pp = cv_adf;
 cv_lm = cv_adf;
+cv_gls = cv_adf;
 
 reject_adf = zeros(N, 1);
+reject_gls = reject_adf;
 reject_kpss = reject_adf;
 reject_LM = reject_adf;
-reject_PP = reject_adf;
+reject_Zt_PP = reject_adf;
+reject_Za_PP = reject_adf;
 
+screen off;
+
+// Perform standard tests
+model = 0;
 for i(1, N, 1);
+
     // Select data for country
     e = data[., "Country"] .== cnames[i];
     tmp_data = selif(data[., "pct_ca_reg"], e);
     y_test = packr(tmp_data[., "pct_ca_reg"]);
+    N_obs[i] = rows(y_test);
     
     // ADF testing
     { tstat_adf[i], lags_adf[i], cv_adf[i, .] } = ADF(y_test, 1);
-    if tstat_adf[i] <= cv_adf[i, 3];
-        reject_adf[i] = 0.10;
+    if tstat_adf[i] <= cv_adf[i, 1];
+        reject_adf[i] = 0.01;
     elseif tstat_adf[i] <= cv_adf[i, 2];
         reject_adf[i] = 0.05;
-    elseif tstat_adf[i] <= cv_adf[i, 1];
-        reject_adf[i] = 0.01;
+    elseif tstat_adf[i] <= cv_adf[i, 3];
+        reject_adf[i] = 0.10;
     endif;
-        
+    
+    // DFGLS testing
+    { tau_GLS[i], lags_gls[i], cv_GLS[i, .] }   = DFGLS(y_test, 1);
+    if tau_gls[i] <= cv_gls[i, 1];
+        reject_gls[i] = 0.01;
+    elseif tau_gls[i] <= cv_gls[i, 2];
+        reject_gls[i] = 0.05;
+    elseif tau_gls[i] <= cv_gls[i, 3];
+        reject_gls[i] = 0.10;
+    endif;
+    
     // KPSS testing
     { LM_kpss[i], cv_tmp } = LMkpss(y_test, 1);
     cv_kpss[i, .] = cv_tmp';
+    if LM_kpss[i] >= cv_kpss[i, 1];
+        reject_kpss[i] = 0.01;
+    elseif LM_kpss[i] >= cv_kpss[i, 2];
+        reject_kpss[i] = 0.05;
+    elseif LM_kpss[i] >= cv_kpss[i, 3];
+        reject_kpss[i] = 0.10;
+    endif;
     
     //PP testing
     { Zt_pp[i], Za_pp[i], cvZt_pp[i, .], cvZa_pp[i, .]} = PP(y_test, 1);
+    if Zt_pp[i] <= cvZt_pp[i, 1];
+        reject_Zt_pp[i] = 0.01;
+    elseif Zt_pp[i] <= cvZt_pp[i, 2];
+        reject_Zt_pp[i] = 0.05;
+    elseif Zt_pp[i] <= cvZt_pp[i, 3];
+        reject_Zt_pp[i] = 0.10;
+    endif;
+    
+    if Za_pp[i] <= cvZa_pp[i, 1];
+        reject_Za_pp[i] = 0.01;
+    elseif Za_pp[i] <= cvZa_pp[i, 2];
+        reject_Za_pp[i] = 0.05;
+    elseif Za_pp[i] <= cvZa_pp[i, 3];
+        reject_Za_pp[i] = 0.10;
+    endif;
     
     //LM testing
     { tstat_LM[i], lags_LM[i], cv_LM[i, .] } = LM(y_test);
+    if tstat_LM[i] <= cv_LM[i, 1];
+        reject_LM[i] = 0.01;
+    elseif tstat_LM[i] <= cv_LM[i, 2];
+        reject_LM[i] = 0.05;
+    elseif tstat_LM[i] <= cv_LM[i, 3];
+        reject_LM[i] = 0.10;
+    endif;
 endfor;
+screen on;
 
+// Add asterisks
+str_stats_adf = addAsterisksToStats(tstat_adf, cv_adf, 1);
+str_stats_gls = addAsterisksToStats(tau_gls, cv_gls, 1);
+str_stats_kpss = addAsterisksToStats(LM_kpss, cv_kpss, 2);
+str_stats_Zt = addAsterisksToStats(Zt_pp, cvZt_pp, 2);
+str_stats_Za = addAsterisksToStats(Za_pp, cvZa_pp, 2);
+str_stats_LM = addAsterisksToStats(tstat_LM, cv_LM, 1);
+
+// Print the UR table
+table_name = spath $+ "appendix3-unit-root.txt";
+output file=^table_name on;
+fmt = "%15s";
+s = "Country"$~"ADF"$~"DFGLS"$~"ZT_PP"$~"Za_PP"$~"LM"$~"KPSS"$~"N"$~"Start Date"$~"End Date";
+sprintf(fmt, s);
+fmt2 = "%15s%15s%15s";
+s2 = cnames$~str_stats_adf$~str_stats_gls$~str_stats_Zt$~str_stats_Za$~str_stats_LM$~str_stats_kpss$~itos(N_obs);
+sprintf(fmt2, s2, start_date[., 2], end_date[., 2]); 
+output off;
+
+// Reclassify rejection vectors for all tests
+reject_adf = asDf(reclassifyRejectionRates(reject_adf), "ADF Conclusion");
+reject_adf_cts = _frequency(reject_adf, 1, 1, 1);
+reject_gls = asDf(reclassifyRejectionRates(reject_gls), "DFGLS Conclusion");
+reject_gls_cts = _frequency(reject_gls, 1, 1, 1);
+reject_kpss = asDF(reclassifyRejectionRates(reject_kpss), "KPSS Conclusion");
+reject_kpss = _frequency(reject_kpss, 1, 1, 1);
+reject_Zt_pp = asDF(reclassifyRejectionRates(reject_Zt_pp), "ZT PP Conclusion");
+reject_Zt_pp_cts = _frequency(reject_Zt_pp, 1, 1, 1);
+reject_Za_pp = asDF(reclassifyRejectionRates(reject_Za_pp), "Za PP Conclusion");
+reject_Za_pp_cts = _frequency(reject_Za_pp, 1, 1, 1);
+reject_LM = asDF(reclassifyRejectionRates(reject_LM), "LM Conclusion");
+reject_LM_cts = _frequency(reject_LM, 1, 1, 1);
+
+
+// Plot results
+struct plotControl ctl;
+ctl = plotGetDefaults("bar");
+
+plotLayout(3, 2, 1);
+plotSetTitle(&ctl, "ADF Test Results (%)");
+plotFreq(ctl, reject_adf, 1, 1);
+
+plotLayout(3, 2, 2);
+plotSetTitle(&ctl, "DFGLS Test Results (%)");
+plotFreq(ctl, reject_gls, 1, 1);
+
+plotLayout(3, 2, 3);
+plotSetTitle(&ctl, "PP Z_a Test Results (%)");
+plotFreq(ctl, reject_Za_PP, 1, 1);
+
+plotLayout(3, 2, 4);
+plotSetTitle(&ctl, "PP Z_t Test Results (%)");
+plotFreq(ctl, reject_ZT_PP, 1, 1);
+
+plotLayout(3, 2, 5);
+plotSetTitle(&ctl, "LM Test Results (%)");
+plotFreq(ctl, reject_LM, 1, 1);
+
+if save_on;
+    plotSave(spath $+ "unit-root-results.png", 11 | 8.5, "in");
+endif;
+
+struct plotControl ctl2;
+ctl2 = plotGetDefaults("bar");
+
+plotOpenWindow();
+plotClearLayout();
+plotSetTitle(&ctl, "KPSS Test Results (%)");
+plotFreq(ctl, reject_adf, 1, 1);
+
+if save_on;
+    plotSave(spath $+ "stationarity-tests.png", 11 | 8.5, "in");
+endif;
+
+proc (1) = reclassifyRejectionRates(reject_vector);
+    local to, from;
     
-    //ADF_output = asDF(cnames, "Country")~asDF(tstat~p~cv, "tstat", "lags", "1%", "5%", "10%");
+    // Values to reclassify to
+    to = "Reject at 1%"$|"Reject at 5%"$|"Reject at 10%"$|"Cannot reject";
+    
+    // Values to classify from
+    from = { .01, 0.05, 0.10, 0 };
+    
+    // Reclassify vector
+    retp(reclassify(reject_vector, from, to));
+endp;
+
+proc (1) = addAsterisksToStats(stats_vec, cv_vec, h0);
+    local str_stats, e1, e2, e3;
+    
+    // Convert to string
+    str_stats = ntos(stats_vec, 4);
+    
+    // Add asterisks
+    if h0 == 1;
+        e1 = (stats_vec .<= cv_vec[., 1]);
+        e2 = (stats_vec .<= cv_vec[., 2] .and stats_vec .> cv_vec[., 1]);
+        e3 = (stats_vec .<= cv_vec[., 3] .and stats_vec .> cv_vec[., 2]);  
+    elseif h0 == 2;
+        e1 = (stats_vec .>= cv_vec[., 1]);
+        e2 = (stats_vec .>= cv_vec[., 2] .and stats_vec .< cv_vec[., 1]);
+        e3 = (stats_vec .>= cv_vec[., 3] .and stats_vec .< cv_vec[., 2]);
+    endif;
+    
+    for i(1, rows(stats_vec), 1);
+        if e1[i];
+            str_stats[i] = str_stats[i]$+"***";
+        elseif e2[i];
+            str_stats[i] = str_stats[i]$+"**";
+        elseif e3[i];
+            str_stats[i] = str_stats[i]$+"*";
+        endif;
+    endfor;
+    
+    retp(str_stats);
+endp;

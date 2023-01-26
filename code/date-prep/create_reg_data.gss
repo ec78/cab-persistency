@@ -29,7 +29,7 @@ reg_data = order(reg_data, "cn_2"$|"date2"$|"pct_ca_reg");
 plotCABData(reg_data, "date2", "cn_2", "pct_ca_reg", spath);
 
 // Get summary table
-table_name = spath2 $+ "summary-reg-data.txt";
+table_name = spath2 $+ "appendix1-summary-stats.txt";
 output file=^table_name on;
 sum_table = getCABSummary(reg_data, "date3", "cn_2", "pct_ca_reg");
 output off;
@@ -96,11 +96,11 @@ proc (1) = getCABSummary(reg_data, time_var, group_var, interest_var);
     // Count observations by group
     count_obs = counts(tmp_data[., group_var], unique(tmp_data[., group_var])); 
 
-    sum_table = mean_ca~min_ca[., 2]~max_ca[., 2]~sd_ca[., 2]~start_date[., 2]~end_date[., 2]~asDF(count_obs, "N");
+    sum_table = mean_ca~sd_ca[., 2]~min_ca[., 2]~max_ca[., 2]~start_date[., 2]~end_date[., 2]~asDF(count_obs, "N");
     
     fmt = "%15s%15.4f%15s%15d";
     sprintf("%15s", getcolnames(sum_table)');
-    sprintf(fmt, mean_ca[.,1], mean_ca[., 2]~min_ca[., 2]~max_ca[., 2]~sd_ca[., 2], start_date[., 2]~end_date[., 2], asDF(count_obs, "N"));
+    sprintf(fmt, mean_ca[.,1], mean_ca[., 2]~sd_ca[., 2]~min_ca[., 2]~max_ca[., 2], start_date[., 2]~end_date[., 2], asDF(count_obs, "N"));
     
     retp(sum_table);
 endp;

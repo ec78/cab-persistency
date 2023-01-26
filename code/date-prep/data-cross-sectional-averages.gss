@@ -1,0 +1,60 @@
+new;
+library tspdlib;
+
+// Data loading path
+fpath = "D:/development/GitHub/cab-persistency/data/";
+
+// Data file
+fname = "reg_data.gdat";
+
+// Results saving paths
+spath = "D:/development/GitHub/cab-persistency/results/unit-root-tests/standard/";
+spath2 = "D:/development/GitHub/cab-persistency/results/unit-root-tests/with-breaks/";
+
+/*
+** Perform import
+*/
+data = packr(loadd(fpath$+fname));
+data = asdate(move(data), "%YQ%q", "date3");
+
+// Get unique country codes
+ccodes = unique(data[., "cn"]);
+
+// Get averages by year
+data[., "pct_ca_reg"] = abs(data[., "pct_ca_reg"]);
+
+// Add IDC variable
+IDC = ((data[., "cn"] .== 111) .or (data[., "cn"] .== 112) .or (data[., "cn"] .== 122) .or (data[., "cn"] .== 124) .or
+       (data[., "cn"] .== 128) .or (data[., "cn"] .== 132) .or (data[., "cn"] .== 134) .or (data[., "cn"] .== 136) .or 
+       (data[., "cn"] .== 137) .or (data[., "cn"] .== 138) .or (data[., "cn"] .== 142) .or (data[., "cn"] .== 144) .or
+       (data[., "cn"] .== 146) .or (data[., "cn"] .== 156) .or (data[., "cn"] .== 158) .or (data[., "cn"] .== 172) .or
+       (data[., "cn"] .== 174) .or (data[., "cn"] .== 176) .or (data[., "cn"] .== 178) .or (data[., "cn"] .== 181) .or
+       (data[., "cn"] .== 182) .or (data[., "cn"] .== 184) .or (data[., "cn"] .== 193) .or (data[., "cn"] .== 196));
+
+// Add LDC variable
+LDC = .not IDC;
+
+// Add EMG
+EMG = ((data[., "cn"] .==186) .or (data[., "cn"] .==199) .or (data[., "cn"] .==213) .or
+       (data[., "cn"] .==223) .or (data[., "cn"] .==228) .or (data[., "cn"] .==233) .or
+       (data[., "cn"] .==248) .or (data[., "cn"] .==273) .or (data[., "cn"] .==293) .or
+       (data[., "cn"] .==299) .or (data[., "cn"] .==343) .or (data[., "cn"] .==369) .or
+       (data[., "cn"] .==436) .or (data[., "cn"] .==439) .or (data[., "cn"] .==469) .or
+       (data[., "cn"] .==513) .or (data[., "cn"] .==524) .or (data[., "cn"] .==528) .or
+       (data[., "cn"] .==532) .or (data[., "cn"] .==534) .or (data[., "cn"] .==536) .or
+       (data[., "cn"] .==542) .or (data[., "cn"] .==548) .or (data[., "cn"] .==564) .or
+       (data[., "cn"] .==566) .or (data[., "cn"] .==576) .or (data[., "cn"] .==578) .or
+       (data[., "cn"] .==616) .or (data[., "cn"] .==652) .or (data[., "cn"] .==662) .or
+       (data[., "cn"] .==664) .or (data[., "cn"] .==684) .or (data[., "cn"] .==686) .or
+       (data[., "cn"] .==694) .or (data[., "cn"] .==698) .or (data[., "cn"] .==744) .or
+       (data[., "cn"] .==918) .or (data[., "cn"] .==922) .or (data[., "cn"] .==924) .or
+       (data[., "cn"] .==935) .or (data[., "cn"] .==944) .or (data[., "cn"] .==946) .or
+       (data[., "cn"] .==961) .or (data[., "cn"] .==964));
+
+
+end;
+
+// Collapse
+csa_ca = aggregate(data[., "pct_ca_reg" "date3"], "mean", "date3");
+csvar_ca = aggregate(sortc(data[., "pct_ca_reg" "date3"], 2), "variance", "date3");
+
