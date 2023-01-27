@@ -1,3 +1,7 @@
+/*
+** This file compares data from 
+** original study to data collected in 2022
+*/
 // Data loading paths and files
 fpath = "D:/development/GitHub/cab-persistency/clean-data/";
 fname = "CA_pt2.dta";

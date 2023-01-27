@@ -1,3 +1,8 @@
+/*
+** This file compares data from 
+** original study after seasonal adjustment
+** to data collected in 2022
+*/
 fpath = "D:/development/GitHub/cab-persistency/clean-data/";
 fname = "comparison.csv";
 
