@@ -15,11 +15,17 @@ library tsmt;
 fpath = "D:/development/GitHub/cab-persistency/data/";
 
 // Data file
-fname = "reg_data_group_dummy.dta";
+ez = 0;
+if ez;
+    fname = "reg_data_group_dummy_ez_euro_start.dta";
+else;
+    fname = "reg_data_group_dummy_euro.dta";
+endif;
 
 // Results saving paths
-spath = "D:/development/GitHub/cab-persistency/results/unit-root-tests/standard/";
-spath2 = "D:/development/GitHub/cab-persistency/results/unit-root-tests/with-breaks/";
+save_on = 1;
+spath = "D:/development/GitHub/cab-persistency/results/data_plots/reg_data/data_summaries/";
+sfile = "fig1-cab-csa-by-year.png";
 
 // Perform import
 data = packr(loadd(fpath$+fname));
@@ -80,9 +86,13 @@ plotSetLegend(&ctl, label, "bottom center outside", 0);
 /*
 ** Iterate through country groups
 */
-string country_grps = { "idc", "ldc", "emg", "lac", "adc" };
+if ez;
+    string country_grps = { "idc", "ldc", "emg", "lac", "adc", "ez" };
+else;
+    string country_grps = { "idc", "ldc", "emg", "lac", "adc", "euro" };
+endif;
 string gr_title = {"Industrialized Countries", "Developing Countries", "Emerging Countries",
-                   "Latin American Countries", "Developing Asian Countries", "Euro Countries" };
+    "Latin American Countries", "Developing Asian Countries", "Euro Countries" };
 
 for i(1, rows(country_grps), 1);
     if annual;
@@ -106,8 +116,19 @@ for i(1, rows(country_grps), 1);
     
     // Create plots
     plotXY(ctl, csa_ca[.,"date3"], csa_ca[.,"pct_ca_reg"]~csvar_ca[., "pct_ca_reg"]);
-
+    if country_grps[i] == "euro";
+        struct plotControl ctl2;
+        ctl2 = plotGetDefaults("xy");
+        
+        plotSetLinePen(&ctl2, 2, "red", 3);
+        plotAddVLine(ctl2, asDate("1999"));
+        plotAddTextbox("Eurozone Formation", asDate("1999"), 10);
+    endif;
 endfor;
+
+if save_on;
+    plotSave(spath $+ sfile, 11|8.5, "in");
+endif;
 
 proc (3) = plotGetPeriodCABMean(data, interest_var, time_var, date1, date2);
     local tmp_data, mean, dts, t;
@@ -146,12 +167,12 @@ proc (1) = pdAggData(data, time_var, grp_var, st_freq, end_freq, method);
     
     // Loop through groups
     for i(1, rows(grps), 1);
-
+        
         tmp_data = selif(data, data[., grp_var] .== grps[i]);
         
         
         // Aggregate data
-        agg_data = aggData(tmp_data, st_freq, end_freq, method); 
+        agg_data = aggData(tmp_data, st_freq, end_freq, method);
         end_indx = (st_indx-1)+rows(agg_data);
         
         data_new[st_indx:end_indx, .] = agg_data;
@@ -164,7 +185,7 @@ proc (1) = pdAggData(data, time_var, grp_var, st_freq, end_freq, method);
     
     retp(data_new);
 endp;
-    
-        
+
+
 
 
