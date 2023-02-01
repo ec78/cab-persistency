@@ -1,0 +1,187 @@
+new;
+library tspdlib, tsmt;
+
+// Data loading path
+fpath = "D:/development/GitHub/cab-persistency/data/";
+
+// Data file
+ez = 0;
+if ez;
+    fname = "reg_data_group_dummy_ez_euro_start.dta";
+else;
+    fname = "reg_data_group_dummy_euro.dta";
+endif;
+
+// Results saving paths
+save_on = 1;
+spath = "D:/development/GitHub/cab-persistency/results/data_plots/reg_data/data_summaries/";
+sfile = "fig5-cab-persistence-grps.png";
+
+/*
+** Perform import
+*/
+data = loadd(fpath$+fname);
+data = asdate(move(data), "%YQ%q", "date3");
+
+/*
+** Data transformations
+*/
+// Filter data to include observations after 1960
+data = delif(data, data[., "date3"] .<"1960-01-01");
+
+// Set up asian and developing country indicator
+adc = (data[., "ldc"] .== 1 .and data[., "eap"] .== 1);
+data = data~asDF(adc, "adc");
+
+// Get column labels
+{ cnames, keys } = getColLabels(data, "Country");
+N = rows(cnames);
+
+// Turn saving on
+save_on = 0;
+
+// Get maximum time length
+tmp_data = packr(data);
+maxT = rows(unique(tmp_data[., "date3"]));
+
+/*
+** Storage Matrices
+*/
+orders = N|maxT|2;
+_beta = arrayinit(orders, 0);
+rho = zeros(maxT, N);
+
+// Set up rolling regression
+wind = 20;
+
+for i(1, N, 1);
+    
+    // Select data for country
+    e = data[., "Country"] .== cnames[i];
+    
+    if ez;
+        tmp_data = packr(selif(data[., "Country" "date3" "pct_ca_reg" "idc" "ldc" "emg" "lac" "adc" "ez"], e));
+    else;
+        tmp_data = packr(selif(data[., "Country" "date3" "pct_ca_reg" "idc" "ldc" "emg" "lac" "adc" "euro"], e));
+    endif;
+    
+    // Get y_test
+    if ez;
+        dt_ctry = tmp_data[., "Country" "date3" "idc" "ldc" "emg" "lac" "adc" "ez"];
+    else;
+        dt_ctry = tmp_data[., "Country" "date3" "idc" "ldc" "emg" "lac" "adc" "euro"];
+    endif;
+    
+    yt = tmp_data[., "pct_ca_reg"];
+    
+    // Run rolling AR(1) test
+    _beta[i, 1:rows(yt), .] = rollingArimaFit(yt, wind);
+    
+    // Get rho
+    tmp_rho = packr(miss(arraytomat(_beta[i, ., 1]), 0));
+    tmp_rho = dt_ctry[1+wind:rows(dt_ctry), .]~asDF(packr(miss(arraytomat(_beta[i, ., 1]), 0)), "rho");
+    
+    // Join with original data
+    if i==1;
+        rho_vec = tmp_rho;
+    else;
+        rho_vec = rho_vec|tmp_rho;
+    endif;
+endfor;
+
+
+/*
+** Iterate through country groups
+*/
+if ez;
+    string country_grps = { "idc", "ldc", "emg", "lac", "adc", "ez" };
+else;
+    string country_grps = { "idc", "ldc", "emg", "lac", "adc", "euro" };
+endif;
+
+string gr_title = {"Industrialized Countries", "Developing Countries", "Emerging Countries",
+    "Latin American Countries", "Developing Asian Countries", "Euro Countries" };
+
+/*
+** Plot Setting
+*/
+/*
+** Set up format for data plots
+*/
+// Plot control struct
+struct plotControl ctl;
+ctl = plotGetDefaults("xy");
+
+// Set the first curve, left y-axis
+// Set the second curve right y-axis
+string which = { "left", "right" };
+plotSetWhichYAxis(&ctl, which);
+
+// Set the left y-axis range to between 0 and 10,
+// and the right y-axis to between 0 and 100
+plotSetYRange(&ctl, 0|1, 0|10);
+plotSetXRange(&ctl, "1965", "2023");
+
+// Set up axis label size
+// Set grid line options specifically for the right Y Axis.
+plotSetActiveY(&ctl, "both");
+// Set axes tick labels to be 14 point 'times new roman'
+plotSetTicLabelFont(&ctl, "Verdana", 8);
+
+// Set up the line style
+plotSetLinePen(&ctl, 2, "black", 1|2);
+
+// Set up legend
+label = "Mean AR(1) coefficient"$|"Absolute Mean Current Account (%GDP)";
+plotSetLegend(&ctl, label, "bottom center outside", 0);
+
+for i(1, rows(country_grps), 1);
+    
+    // Select subsets of data
+    grp_rho = selif(rho_vec, rho_vec[., country_grps[i]] .== 1);
+    grp_data = selif(data, data[., country_grps[i]] .== 1);
+    
+    /*
+    ** Perform CSA
+    */
+    // Mean CAB by year
+    // Take absolute value of CAB
+    grp_data[., "pct_ca_reg"] = abs(grp_data[., "pct_ca_reg"]);
+    csa_cab = aggregate(grp_data[., "pct_ca_reg" "date3"], "mean", "date3");
+    
+    // Mean rho by year
+    csa_rho = aggregate(grp_rho[., "rho" "date3"], "mean", "date3");
+    csvar_rho = aggregate(grp_rho[., "rho" "date3"], "variance", "date3");
+    
+    // Get plot data
+    plt_data = innerJoin(csa_cab, "date3", csa_rho, "date3");
+    plt_data2 = innerJoin(csvar_rho, "date3", csa_rho, "date3");
+    
+    // Plot Data
+    plotLayout(3, 2, i);
+    plotSetTitle(&ctl, gr_title[i], "Arial", 16);
+    
+    plotXY(ctl, plt_data[., "date3"], plt_data[., "rho" "pct_ca_reg"]);
+
+endfor;
+
+proc (1) = rollingARIMAFit(yt, wind, ...);
+    local beta_, res, T, fnl_T;
+    
+    // Setup Estimation Parameters
+    T = rows(yt);
+    fnl_T = T-wind;
+    
+    // Storage Matrices
+    beta_=zeros(T, 2);
+    res = zeros(T, 1);
+    
+    for i(1, fnl_T, 1);
+        struct arimamtOut amo;
+        amo = arimaFit(yt[i:(wind-1)+i], 1);
+        beta_[i, .] = amo.b';
+    endfor;
+    
+    retp(beta_);
+endp;
+
