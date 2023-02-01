@@ -8,8 +8,9 @@ fpath = "D:/development/GitHub/cab-persistency/data/";
 fname = "reg_data.gdat";
 
 // Results saving paths
-spath = "D:/development/GitHub/cab-persistency/results/unit-root-tests/standard/";
-spath2 = "D:/development/GitHub/cab-persistency/results/unit-root-tests/with-breaks/";
+save_on = 0;
+spath = "D:/development/GitHub/cab-persistency/results/data_plots/reg_data/data_summaries/";
+sfile = "fig3-cab-persistence.png";
 
 /*
 ** Perform import
@@ -116,7 +117,11 @@ plotSetLinePen(&ctl, 2, "black", 1|2);
 label = "Mean AR(1) coefficient"$|"Absolute Mean Current Account (%GDP)";
 plotSetLegend(&ctl, label, "bottom center outside", 0);
 
-plotXY(&ctl, plt_data[., "date3"], plt_data[., "rho" "pct_ca_reg"])
+plotXY(ctl, plt_data[., "date3"], plt_data[., "rho" "pct_ca_reg"]);
+if save_on;
+    plotSave(spath $+ sfile, 11|8.5, "in");
+endif;
+
 proc (1) = rollingARIMAFit(yt, wind, ...);
     local beta_, res, T, fnl_T;
     
