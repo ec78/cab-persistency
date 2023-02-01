@@ -11,7 +11,7 @@ fname = "reg_data.gdat";
 save_on = 0;
 spath = "D:/development/GitHub/cab-persistency/results/data_plots/reg_data/data_summaries/";
 sfile = "fig3-cab-persistence.png";
-
+sfile2 = "fig4-cab-persistence2.png";
 /*
 ** Perform import
 */
@@ -83,9 +83,11 @@ csa_cab = aggregate(data[., "pct_ca_reg" "date3"], "mean", "date3");
 
 // Mean rho by year
 csa_rho = aggregate(rho_vec[., "rho" "date3"], "mean", "date3");
+csvar_rho = aggregate(rho_vec[., "rho" "date3"], "variance", "date3");
 
 // Get plot data
 plt_data = innerJoin(csa_cab, "date3", csa_rho, "date3");
+plt_data2 = innerJoin(csa_rho, "date3", csvar_rho, "date3");
 
 /*
 ** Set up format for data plots
@@ -101,14 +103,16 @@ plotSetWhichYAxis(&ctl, which);
 
 // Set the left y-axis range to between 0 and 10,
 // and the right y-axis to between 0 and 100
-plotSetYRange(&ctl, 0|1, 0|10);
+plotSetYRange(&ctl, 0|0, 1|10);
 plotSetXRange(&ctl, "1965", "2023");
 
 // Set up axis label size
-// Set grid line options specifically for the right Y Axis.
 plotSetActiveY(&ctl, "both");
-// Set axes tick labels to be 14 point 'times new roman'
+// Set axes tick labels 
 plotSetTicLabelFont(&ctl, "Verdana", 8);
+
+plotSetActiveY(&ctl, "left");
+plotSetYGrid(&ctl, "on");
 
 // Set up the line style
 plotSetLinePen(&ctl, 2, "black", 1|2);
@@ -117,10 +121,21 @@ plotSetLinePen(&ctl, 2, "black", 1|2);
 label = "Mean AR(1) coefficient"$|"Absolute Mean Current Account (%GDP)";
 plotSetLegend(&ctl, label, "bottom center outside", 0);
 
+
+
 plotXY(ctl, plt_data[., "date3"], plt_data[., "rho" "pct_ca_reg"]);
 if save_on;
     plotSave(spath $+ sfile, 11|8.5, "in");
 endif;
+
+// Set up legend
+label = "Mean AR(1) coefficient"$|"Variance AR(1) coefficient";
+plotSetLegend(&ctl, label, "bottom center outside", 0);
+
+plotSetYRange(&ctl, 0|0, 1|0.5);
+
+plotOpenWindow();
+plotXY(ctl, plt_data2[., "date3"], plt_data2[., "rho" "rho_2"]);
 
 proc (1) = rollingARIMAFit(yt, wind, ...);
     local beta_, res, T, fnl_T;
