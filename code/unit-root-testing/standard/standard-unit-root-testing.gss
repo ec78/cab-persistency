@@ -25,7 +25,7 @@ ccodes = unique(data[., "cn"]);
 N = rows(cnames);
 
 // Turn saving on
-save_on = 0;
+save_on = 1;
 
 // Get start and end data
 tmp_data = packr(data);
@@ -67,7 +67,7 @@ reject_Za_PP = reject_adf;
 screen off;
 
 // Perform standard tests
-model = 0;
+model = 1;
 for i(1, N, 1);
 
     // Select data for country
