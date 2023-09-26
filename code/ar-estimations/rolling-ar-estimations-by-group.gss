@@ -2,7 +2,7 @@ new;
 library tspdlib, tsmt;
 
 // Data loading path
-fpath = "D:/development/GitHub/cab-persistency/data/";
+fpath = "data/";
 
 // Data file
 ez = 0;
@@ -14,7 +14,7 @@ endif;
 
 // Results saving paths
 save_on = 1;
-spath = "D:/development/GitHub/cab-persistency/results/data_plots/reg_data/data_summaries/";
+spath = "results/data_plots/reg_data/data_summaries/";
 sfile = "fig5-cab-persistence-grps.png";
 
 /*
@@ -119,7 +119,7 @@ plotSetWhichYAxis(&ctl, which);
 
 // Set the left y-axis range to between 0 and 10,
 // and the right y-axis to between 0 and 100
-plotSetYRange(&ctl, 0|1, 0|10);
+plotSetYRange(&ctl, 0|1, 0|12);
 plotSetXRange(&ctl, "1965", "2023");
 
 // Set up axis label size
@@ -132,7 +132,7 @@ plotSetTicLabelFont(&ctl, "Verdana", 8);
 plotSetLinePen(&ctl, 2, "black", 1|2);
 
 // Set up legend
-label = "Mean AR(1) coefficient"$|"Absolute Mean Current Account (%GDP)";
+label = "Absolute Mean Current Account (%GDP)"$|"Within period standard deviation of CAB";
 plotSetLegend(&ctl, label, "bottom center outside", 0);
 
 for i(1, rows(country_grps), 1);
@@ -146,22 +146,23 @@ for i(1, rows(country_grps), 1);
     */
     // Mean CAB by year
     // Take absolute value of CAB
+    cssd_cab = aggregate(grp_data[., "pct_ca_reg" "date3"], "sd", "date3");
     grp_data[., "pct_ca_reg"] = abs(grp_data[., "pct_ca_reg"]);
     csa_cab = aggregate(grp_data[., "pct_ca_reg" "date3"], "mean", "date3");
     
     // Mean rho by year
     csa_rho = aggregate(grp_rho[., "rho" "date3"], "mean", "date3");
-    csvar_rho = aggregate(grp_rho[., "rho" "date3"], "variance", "date3");
+    cssd_rho = aggregate(grp_rho[., "rho" "date3"], "sd", "date3");
     
     // Get plot data
-    plt_data = innerJoin(csa_cab, "date3", csa_rho, "date3");
-    plt_data2 = innerJoin(csvar_rho, "date3", csa_rho, "date3");
+    plt_data = innerJoin(csa_cab, "date3", cssd_cab, "date3");
+    plt_data2 = innerJoin(cssd_rho, "date3", csa_rho, "date3");
     
     // Plot Data
     plotLayout(3, 2, i);
     plotSetTitle(&ctl, gr_title[i], "Arial", 16);
     
-    plotXY(ctl, plt_data[., "date3"], plt_data[., "rho" "pct_ca_reg"]);
+    plotXY(ctl, plt_data[., "date3"], plt_data[., "pct_ca_reg" "pct_ca_reg_2"]);
 
 endfor;
 

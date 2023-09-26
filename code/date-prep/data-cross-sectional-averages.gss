@@ -11,14 +11,15 @@ library tspdlib;
 ** Load data
 */
 // Data loading path
-fpath = "D:/development/GitHub/cab-persistency/data/";
+root = "C:/Users/eclow/Documents/GitHub/cab-persistency/results/";
+fpath = root $+ "data/";
 
 // Data file
 fname = "reg_data_group_dummy.dta";
 
 // Results saving paths
-spath = "D:/development/GitHub/cab-persistency/results/unit-root-tests/standard/";
-spath2 = "D:/development/GitHub/cab-persistency/results/unit-root-tests/with-breaks/";
+spath = root $+ "unit-root-tests/standard/";
+spath2 = root $+ "unit-root-tests/with-breaks/";
 
 // Perform import
 data = packr(loadd(fpath$+fname));

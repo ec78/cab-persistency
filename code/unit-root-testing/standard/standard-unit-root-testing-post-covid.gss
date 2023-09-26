@@ -15,18 +15,21 @@ spath2 = "results/unit-root-tests/with-breaks/";
 data = loadd("data/reg_data.gdat");
 data = asdate(move(data), "%YQ%q", "date3");
 
+// Filter data
+post_data = selif(data, data[., "date2"] .>= "2020-03");
+
 // Get unique country codes
-ccodes = unique(data[., "cn"]);
+ccodes = unique(post_data[., "cn"]);
 
 // Get column labels
-{ cnames, keys } = getColLabels(data, "Country");
+{ cnames, keys } = getColLabels(post_data, "Country");
 N = rows(cnames);
 
 // Turn saving on
 save_on = 1;
 
 // Get start and end data
-tmp_data = packr(data);
+tmp_data = packr(post_data);
 
 
 // Get start and end dates
@@ -69,13 +72,13 @@ model = 1;
 for i(1, N, 1);
 
     // Select data for country
-    e = data[., "Country"] .== cnames[i];
-    tmp_data = selif(data[., "pct_ca_reg"], e);
+    e = post_data[., "Country"] .== cnames[i];
+    tmp_data = selif(post_data[., "pct_ca_reg"], e);
     y_test = packr(tmp_data[., "pct_ca_reg"]);
     N_obs[i] = rows(y_test);
     
     // ADF testing
-    { tstat_adf[i], lags_adf[i], cv_adf[i, .] } = ADF(y_test, 1);
+    { tstat_adf[i], lags_adf[i], cv_adf[i, .] } = ADF(y_test, 1, 2);
     if tstat_adf[i] <= cv_adf[i, 1];
         reject_adf[i] = 0.01;
     elseif tstat_adf[i] <= cv_adf[i, 2];
@@ -85,7 +88,7 @@ for i(1, N, 1);
     endif;
     
     // DFGLS testing
-    { tau_GLS[i], lags_gls[i], cv_GLS[i, .] }   = DFGLS(y_test, 1);
+    { tau_GLS[i], lags_gls[i], cv_GLS[i, .] }   = DFGLS(y_test, 1, 2);
     if tau_gls[i] <= cv_gls[i, 1];
         reject_gls[i] = 0.01;
     elseif tau_gls[i] <= cv_gls[i, 2];
@@ -144,7 +147,7 @@ str_stats_Za = addAsterisksToStats(Za_pp, cvZa_pp, 1);
 str_stats_LM = addAsterisksToStats(tstat_LM, cv_LM, 1);
 
 // Print the UR table
-table_name = spath $+ "appendix3-unit-root.txt";
+table_name = spath $+ "appendix3-pre-covid-unit-root.txt";
 output file=^table_name on;
 fmt = "%15s";
 s = "Country"$~"ADF"$~"DFGLS"$~"ZT_PP"$~"Za_PP"$~"LM"$~"KPSS"$~"N"$~"Start Date"$~"End Date";
@@ -194,7 +197,7 @@ plotSetTitle(&ctl, "LM Test Results (%)");
 plotFreq(ctl, reject_LM, 1);
 
 if save_on;
-    plotSave(spath $+ "unit-root-results.png", 11 | 8.5, "in");
+    plotSave(spath $+ "pre-covid-unit-root-results.png", 11 | 8.5, "in");
 endif;
 
 struct plotControl ctl2;
@@ -206,7 +209,7 @@ plotSetTitle(&ctl, "KPSS Test Results (%)");
 plotFreq(ctl, reject_kpss, 1);
 
 if save_on;
-    plotSave(spath $+ "stationarity-tests.png", 11 | 8.5, "in");
+    plotSave(spath $+ "pre-covid-stationarity-tests.png", 11 | 8.5, "in");
 endif;
 
 proc (1) = reclassifyRejectionRates(reject_vector);

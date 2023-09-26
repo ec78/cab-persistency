@@ -2,14 +2,14 @@ new;
 library tspdlib, tsmt;
 
 // Data loading path
-fpath = "D:/development/GitHub/cab-persistency/data/";
+fpath = "data/";
 
 // Data file
 fname = "reg_data.gdat";
 
 // Results saving paths
-save_on = 0;
-spath = "D:/development/GitHub/cab-persistency/results/data_plots/reg_data/data_summaries/";
+save_on = 1;
+spath = "results/data_plots/reg_data/data_summaries/";
 sfile = "fig3-cab-persistence.png";
 sfile2 = "fig4-cab-persistence2.png";
 /*
@@ -78,16 +78,17 @@ endfor;
 */
 // Mean CAB by year 
 // Take absolute value of CAB
+cssd_cab =  aggregate(data[., "pct_ca_reg" "date3"], "sd", "date3");
 data[., "pct_ca_reg"] = abs(data[., "pct_ca_reg"]);
 csa_cab = aggregate(data[., "pct_ca_reg" "date3"], "mean", "date3");
 
 // Mean rho by year
 csa_rho = aggregate(rho_vec[., "rho" "date3"], "mean", "date3");
-csvar_rho = aggregate(rho_vec[., "rho" "date3"], "variance", "date3");
+cssd_rho = aggregate(rho_vec[., "rho" "date3"], "sd", "date3");
 
 // Get plot data
-plt_data = innerJoin(csa_cab, "date3", csa_rho, "date3");
-plt_data2 = innerJoin(csa_rho, "date3", csvar_rho, "date3");
+plt_data = innerJoin(csa_cab, "date3", cssd_cab, "date3");
+plt_data2 = innerJoin(csa_rho, "date3", cssd_rho, "date3");
 
 /*
 ** Set up format for data plots
@@ -103,7 +104,7 @@ plotSetWhichYAxis(&ctl, which);
 
 // Set the left y-axis range to between 0 and 10,
 // and the right y-axis to between 0 and 100
-plotSetYRange(&ctl, 0|0, 1|10);
+plotSetYRange(&ctl, 0|0, 10|12);
 plotSetXRange(&ctl, "1965", "2023");
 
 // Set up axis label size
@@ -118,22 +119,22 @@ plotSetYGrid(&ctl, "on");
 plotSetLinePen(&ctl, 2, "black", 1|2);
 
 // Set up legend
-label = "Mean AR(1) coefficient"$|"Absolute Mean Current Account (%GDP)";
+label = "Absolute Mean Current Account (%GDP)"$|"Within period standard deviation of CAB";
 plotSetLegend(&ctl, label, "bottom center outside", 0);
 
 
-
-plotXY(ctl, plt_data[., "date3"], plt_data[., "rho" "pct_ca_reg"]);
+plotSetYLabel(&ctl, "Current Account (% GDP)"$|"Standard Deviation (% GDP)", "Verdana", 16);
+plotXY(ctl, plt_data[., "date3"], plt_data[., "pct_ca_reg" "pct_ca_reg_2"]);
 if save_on;
     plotSave(spath $+ sfile, 11|8.5, "in");
 endif;
 
 // Set up legend
-label = "Mean AR(1) coefficient"$|"Variance AR(1) coefficient";
+label = "Mean AR(1) estimates"$|"Within period standard deviation of AR(1) estimates";
 plotSetLegend(&ctl, label, "bottom center outside", 0);
 
-plotSetYRange(&ctl, 0|0, 1|0.5);
-
+plotSetYRange(&ctl, 0|0, 1|0.75);
+plotSetYLabel(&ctl, "AR(1) Coefficient"$|"Cross section Standard Deviation", "Arial", 16);
 plotOpenWindow();
 plotXY(ctl, plt_data2[., "date3"], plt_data2[., "rho" "rho_2"]);
 
