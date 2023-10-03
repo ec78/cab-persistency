@@ -1,5 +1,6 @@
 new;
 library tspdlib, tsmt;
+#include code/cab_util.src
 
 // Data loading path
 fpath = "data/";
@@ -165,24 +166,4 @@ for i(1, rows(country_grps), 1);
     plotXY(ctl, plt_data[., "date3"], plt_data[., "pct_ca_reg" "pct_ca_reg_2"]);
 
 endfor;
-
-proc (1) = rollingARIMAFit(yt, wind, ...);
-    local beta_, res, T, fnl_T;
-    
-    // Setup Estimation Parameters
-    T = rows(yt);
-    fnl_T = T-wind;
-    
-    // Storage Matrices
-    beta_=zeros(T, 2);
-    res = zeros(T, 1);
-    
-    for i(1, fnl_T, 1);
-        struct arimamtOut amo;
-        amo = arimaFit(yt[i:(wind-1)+i], 1);
-        beta_[i, .] = amo.b';
-    endfor;
-    
-    retp(beta_);
-endp;
 

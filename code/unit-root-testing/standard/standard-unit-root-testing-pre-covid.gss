@@ -1,5 +1,6 @@
 new;
-library tspdlib;
+library tspdlib, tsmt;
+#include code/cab_util.src
 
 // Data loading path
 // Data file
@@ -79,72 +80,37 @@ for i(1, N, 1);
     
     // ADF testing
     { tstat_adf[i], lags_adf[i], cv_adf[i, .] } = ADF(y_test, 1);
-    if tstat_adf[i] <= cv_adf[i, 1];
-        reject_adf[i] = 0.01;
-    elseif tstat_adf[i] <= cv_adf[i, 2];
-        reject_adf[i] = 0.05;
-    elseif tstat_adf[i] <= cv_adf[i, 3];
-        reject_adf[i] = 0.10;
-    endif;
+    reject_adf[i] = checkRejection(tstat_adf[i], cv_adf[i, .], 0);
     
     // DFGLS testing
     { tau_GLS[i], lags_gls[i], cv_GLS[i, .] }   = DFGLS(y_test, 1);
-    if tau_gls[i] <= cv_gls[i, 1];
-        reject_gls[i] = 0.01;
-    elseif tau_gls[i] <= cv_gls[i, 2];
-        reject_gls[i] = 0.05;
-    elseif tau_gls[i] <= cv_gls[i, 3];
-        reject_gls[i] = 0.10;
-    endif;
+    reject_gls[i] = checkRejection(tau_GLS[i], cv_GLS[i, .], 0);
     
     // KPSS testing
     { LM_kpss[i], cv_tmp } = LMkpss(y_test, 1);
     cv_kpss[i, .] = cv_tmp';
-    if LM_kpss[i] >= cv_kpss[i, 1];
-        reject_kpss[i] = 0.01;
-    elseif LM_kpss[i] >= cv_kpss[i, 2];
-        reject_kpss[i] = 0.05;
-    elseif LM_kpss[i] >= cv_kpss[i, 3];
-        reject_kpss[i] = 0.10;
-    endif;
+    reject_kpss[i] = checkRejection(LM_kpss[i], cv_kpss[i, .], 1);
     
     //PP testing
     { Zt_pp[i], Za_pp[i], cvZt_pp[i, .], cvZa_pp[i, .]} = PP(y_test, 1);
-    if Zt_pp[i] <= cvZt_pp[i, 1];
-        reject_Zt_pp[i] = 0.01;
-    elseif Zt_pp[i] <= cvZt_pp[i, 2];
-        reject_Zt_pp[i] = 0.05;
-    elseif Zt_pp[i] <= cvZt_pp[i, 3];
-        reject_Zt_pp[i] = 0.10;
-    endif;
-    
-    if Za_pp[i] <= cvZa_pp[i, 1];
-        reject_Za_pp[i] = 0.01;
-    elseif Za_pp[i] <= cvZa_pp[i, 2];
-        reject_Za_pp[i] = 0.05;
-    elseif Za_pp[i] <= cvZa_pp[i, 3];
-        reject_Za_pp[i] = 0.10;
-    endif;
+    reject_Zt_pp[i] = checkRejection(Zt_pp[i], cvZt_pp[i, .], 0);
+    reject_Za_pp[i] = checkRejection(Za_pp[i], cvZa_pp[i, .], 0);
     
     //LM testing
     { tstat_LM[i], lags_LM[i], cv_LM[i, .] } = LM(y_test);
-    if tstat_LM[i] <= cv_LM[i, 1];
-        reject_LM[i] = 0.01;
-    elseif tstat_LM[i] <= cv_LM[i, 2];
-        reject_LM[i] = 0.05;
-    elseif tstat_LM[i] <= cv_LM[i, 3];
-        reject_LM[i] = 0.10;
-    endif;
+    reject_LM[i] = checkRejection(tstat_LM[i], cv_LM[i, .], 0);
+
 endfor;
 screen on;
 
 // Add asterisks
-str_stats_adf = addAsterisksToStats(tstat_adf, cv_adf, 1);
-str_stats_gls = addAsterisksToStats(tau_gls, cv_gls, 1);
-str_stats_kpss = addAsterisksToStats(LM_kpss, cv_kpss, 2);
-str_stats_Zt = addAsterisksToStats(Zt_pp, cvZt_pp, 1);
-str_stats_Za = addAsterisksToStats(Za_pp, cvZa_pp, 1);
-str_stats_LM = addAsterisksToStats(tstat_LM, cv_LM, 1);
+// Add asterisks
+str_stats_adf = addAsterisks(tstat_adf, reject_adf);
+str_stats_gls = addAsterisks(tau_gls, reject_gls);
+str_stats_kpss = addAsterisks(LM_kpss, reject_kpss);
+str_stats_Zt = addAsterisks(Zt_pp, reject_Zt_pp);
+str_stats_Za = addAsterisks(Za_pp, reject_Za_pp);
+str_stats_LM = addAsterisks(tstat_LM, reject_LM);
 
 // Print the UR table
 table_name = spath $+ "appendix3-pre-covid-unit-root.txt";
@@ -158,20 +124,13 @@ sprintf(fmt2, s2, start_date[., 2], end_date[., 2]);
 output off;
 
 // Reclassify rejection vectors for all tests
-reject_adf = asDf(reclassifyRejectionRates(reject_adf), "ADF Conclusion");
-reject_adf_cts = _frequency(reject_adf, 1, 1, 1);
-reject_gls = asDf(reclassifyRejectionRates(reject_gls), "DFGLS Conclusion");
-reject_gls_cts = _frequency(reject_gls, 1, 1, 1);
-reject_kpss = asDF(reclassifyRejectionRates(reject_kpss), "KPSS Conclusion");
-reject_kpss_cts = _frequency(reject_kpss, 1, 1, 1);
-reject_Zt_pp = asDF(reclassifyRejectionRates(reject_Zt_pp), "ZT PP Conclusion");
-reject_Zt_pp_cts = _frequency(reject_Zt_pp, 1, 1, 1);
-reject_Za_pp = asDF(reclassifyRejectionRates(reject_Za_pp), "Za PP Conclusion");
-reject_Za_pp_cts = _frequency(reject_Za_pp, 1, 1, 1);
-reject_LM = asDF(reclassifyRejectionRates(reject_LM), "LM Conclusion");
-reject_LM_cts = _frequency(reject_LM, 1, 1, 1);
-
-
+{ reject_adf,  reject_adf_cts } = countsRejectionsRates(reject_adf, "ADF Conclusion");
+{ reject_gls,  reject_gls_cts } = countsRejectionsRates(reject_gls, "DFGLS Conclusion");
+{ reject_kpss,  reject_kpss_cts } = countsRejectionsRates(reject_kpss, "KPSS Conclusion");
+{ reject_Zt_pp,  reject_Zt_pp_cts } = countsRejectionsRates(reject_Zt_pp, "ZT PP Conclusion");
+{ reject_Za_pp,  reject_Za_pp_cts } = countsRejectionsRates(reject_Za_pp, "Za PP Conclusion");
+{ reject_LM,  reject_LM_cts } = countsRejectionsRates(reject_LM, "LM Conclusion");
+ 
 // Plot results
 struct plotControl ctl;
 ctl = plotGetDefaults("bar");
@@ -211,46 +170,3 @@ plotFreq(ctl, reject_kpss, 1);
 if save_on;
     plotSave(spath $+ "pre-covid-stationarity-tests.png", 11 | 8.5, "in");
 endif;
-
-proc (1) = reclassifyRejectionRates(reject_vector);
-    local to, from;
-    
-    // Values to reclassify to
-    to = "Reject at 1%"$|"Reject at 5%"$|"Reject at 10%"$|"Cannot reject";
-    
-    // Values to classify from
-    from = { .01, 0.05, 0.10, 0 };
-    
-    // Reclassify vector
-    retp(reclassify(reject_vector, from, to));
-endp;
-
-proc (1) = addAsterisksToStats(stats_vec, cv_vec, h0);
-    local str_stats, e1, e2, e3;
-    
-    // Convert to string
-    str_stats = ntos(stats_vec, 4);
-    
-    // Add asterisks
-    if h0 == 1;
-        e1 = (stats_vec .<= cv_vec[., 1]);
-        e2 = (stats_vec .<= cv_vec[., 2] .and stats_vec .> cv_vec[., 1]);
-        e3 = (stats_vec .<= cv_vec[., 3] .and stats_vec .> cv_vec[., 2]);  
-    elseif h0 == 2;
-        e1 = (stats_vec .>= cv_vec[., 1]);
-        e2 = (stats_vec .>= cv_vec[., 2] .and stats_vec .< cv_vec[., 1]);
-        e3 = (stats_vec .>= cv_vec[., 3] .and stats_vec .< cv_vec[., 2]);
-    endif;
-    
-    for i(1, rows(stats_vec), 1);
-        if e1[i];
-            str_stats[i] = str_stats[i]$+"***";
-        elseif e2[i];
-            str_stats[i] = str_stats[i]$+"**";
-        elseif e3[i];
-            str_stats[i] = str_stats[i]$+"*";
-        endif;
-    endfor;
-    
-    retp(str_stats);
-endp;
