@@ -1,0 +1,267 @@
+new;
+library tspdlib, tsmt;
+#include code/cab_util.src
+
+// Data loading path
+// Data file
+fname = "reg_data.gdat";
+
+// Results saving paths
+spath2 = "results/unit-root-tests/breaks/";
+spath_gr = "results/data_plots/reg_data/CAB-with-break/";
+
+/*
+** Perform import
+*/
+data = loadd("data/reg_data.gdat");
+data = asdate(move(data), "%YQ%q", "date2");
+
+// Filter data
+pre_data = selif(data, data[., "date2"] .< "2020-03");
+
+// Get unique country codes
+ccodes = unique(pre_data[., "cn"]);
+
+// Get column labels
+{ cnames, keys } = getColLabels(pre_data, "Country");
+N = rows(cnames);
+
+// Turn saving on
+save_on = 1;
+
+// Get start and end data
+tmp_data = packr(pre_data);
+
+// Get start and end dates
+start_date = asDF(aggregate(packr(tmp_data[., "date3" "Country"]), "min", "Country"), "Country", "Start Date");
+end_date = asDF(aggregate(packr(tmp_data[., "date3" "Country"]), "max", "Country"), "Country", "End Date");
+
+
+/*
+** SB test settings
+*/
+
+// Number of regressors
+q = 2;
+
+// No x or lags
+x = 0;
+p = 0;
+
+/*
+** Storage Matrices
+*/
+N_obs = zeros(N, 1);
+
+// Stores breaks
+tb = zeros(N, 5);
+pt_brks = zeros(N, 1);
+mpt_brks = zeros(N, 1);
+adf_brks = zeros(N, 1);
+za_brks = zeros(N, 1);
+mza_brks = zeros(N, 1);
+msb_brks = zeros(N, 1);
+mzt_brks = zeros(N, 1);
+n_brks = zeros(N, 1);
+cv_msb = zeros(N, 3);
+cv_mza = zeros(N, 3);
+cv_mzt = zeros(N, 3);
+cv_pt = zeros(N, 3);
+
+// Conclusions
+reject_adf_brks = zeros(N,1);
+reject_pt_brks = reject_adf_brks;
+reject_za_brks = reject_adf_brks;
+reject_MZa_brks = reject_adf_brks;
+reject_MZt_brks = reject_adf_brks;
+reject_MSB_brks = reject_adf_brks;
+reject_MPT_brks = reject_adf_brks;
+
+/*
+** This section sets parameters
+** for unit root testing.
+*/
+// Set up control structure
+struct sburControl msburCtl;
+msburCtl = sburControlCreate();
+
+/*
+** Settings for SB test
+*/
+
+// Output structure
+struct sburOut msOut;
+msOut = reshape(msOut, N, 1);
+
+// Model to use
+model = 3;
+
+//Estimation method, 1 for algorithm
+msburCtl.estimation = 1;
+msburCtl.maxIters = 20;
+
+screen off;
+
+/*
+** First step structural break testing
+*/
+struct plotControl pCtl;
+pctl = plotGetDefaults("XY");
+
+for i(1, N, 1);
+    
+    // Select data for country
+    Print "Country:";
+    cnames[i];
+    e = pre_data[., "Country"] .== cnames[i];
+    tmp_data = selif(pre_data[., "date2" "pct_ca_reg"], e);
+    y_test = packr(tmp_data[., "date2" "pct_ca_reg"]);
+    N_obs[i] = rows(y_test);
+    
+    bigt = N_obs[i];
+    
+    // Control Structure
+    struct breakControl bCtl;
+    bCtl = breakControlCreate(bigt);
+    
+    // Matrix conformed by the elements that are allowed to change
+    // includes time trend
+    z = ones(bigt, 1)~seqa(1, 1, bigt);
+    
+    // ADF testing
+    { datevec, nbreak, mbic, mlwz, supfl, dateseq, ftest, wftest, reparv } = structural_break(bigt, y_test[., "pct_ca_reg"], z, x, p, q, 5, bCtl);
+    
+    // Get optimal breaks
+    if mlwz > 0;
+        tb[i, .] = datevec[., mlwz]';
+        
+        // Number of breaks
+        msburCtl.numberBreaks = mlwz;
+        n_brks[i] = mlwz;
+        
+        // Output structure
+        msOut[i] = sbur_gls(y_test, model, msburCtl);
+        
+        pt_brks[i] = msOut[i].pt;
+        mpt_brks[i] = msOut[i].mpt;
+        adf_brks[i] = msOut[i].adf;
+        za_brks[i] = msOut[i].za;
+        mza_brks[i] = msOut[i].mza;
+        msb_brks[i] = msOut[i].msb;
+        mzt_brks[i] = msOut[i].mzt;
+        
+        cv_msb[i, .] = msOut[i].cv_msb';
+        cv_mza[i, .] = msOUt[i].cv_mza';
+        cv_mzt[i, .] = msOut[i].cv_mzt';
+        cv_pt[i, .] = msOut[i].cv_pt';
+        
+        reject_adf_brks[i] = checkRejection(adf_brks[i], cv_mzt[i, .], 0);
+        reject_pt_brks[i] = checkRejection(pt_brks[i], cv_pt[i, .], 0);
+        reject_za_brks[i] = checkRejection(za_brks[i], cv_mza[i, .], 0);
+        reject_mza_brks[i] = checkRejection(mza_brks[i], cv_mza[i, .], 0);
+        reject_mpt_brks[i] = checkRejection(mpt_brks[i], cv_pt[i, .], 0);
+        reject_msb_brks[i] = checkRejection(msb_brks[i], cv_msb[i, .], 0);
+        reject_mzt_brks[i] = checkRejection(mzt_brks[i], cv_mzt[i, .], 0);
+       
+        /*
+        ** Make time-series plot with breaks
+        */
+        // Set color
+        plotSetLineColor(&pctl, "black");
+        
+        // Solid for CAB line, dash for breaks
+        plotSetLineStyle(&pctl, 1|2|2|2|2);
+        
+        // Set the title
+        plotSetTitle(&pctl, cnames[i], "Arial", 18);
+        
+        plotOpenWindow();
+        
+        // Plot series
+        plotXY(pctl, y_test[., "date2"], y_test[., "pct_ca_reg"]);
+        
+        // Plot breaks
+        plotAddVLine(msOut[i].min_tb);
+        
+        // Save plot
+        plotname = spath_gr $+ cnames[i] $+ ".png";
+        plotSave(plotname, 800|600, "px");
+    endif;
+    
+    
+endfor;
+screen on;
+
+// Add asterisks
+str_stats_adf = addAsterisks(adf_brks, reject_adf_brks);
+str_stats_PT = addAsterisks(PT_brks, reject_PT_brks);
+str_stats_za = addAsterisks(za_brks, reject_za_brks);
+str_stats_MZa = addAsterisks(MZa_brks, reject_MZa_brks);
+str_stats_MZt = addAsterisks(MZt_brks, reject_MZt_brks);
+str_stats_MSB = addAsterisks(MSB_brks, reject_MSB_brks);
+str_stats_MPT = addAsterisks(MPT_brks, reject_MPT_brks);
+
+// Compile into DF
+str_stats = asDF(str_stats_adf$~str_stats_PT$~str_stats_Za$~str_stats_MZa$~str_stats_MZt$~str_stats_MSB$~str_stats_MPT);
+str_stats = setColNames(str_stats, "ADF"$|"PT"$|"Za"$|"MZa"$|"MZt"$|"MSB"$|"MPT");
+cnames = setColNames(cnames, "Country");
+n_brks = asDF(n_brks, "Num. Breaks");
+
+// Print the UR table
+table_name = spath2 $+ "breaks-pre-covid-unit-root.txt";
+output file=^table_name on;
+format /mb1 /ros 15,8;
+tbl_df = cnames~str_stats~n_brks~start_date[., 2]~end_date[., 2];
+tbl_df;
+//fmt = "%15s";
+//s = "Country"$~"ADF"$~"PT"$~"Za"$~"MZa"$~"MZt"$~"MSB"$~"MPT"$~"N"$~"Start Date"$~"End Date";
+//sprintf(fmt, s);
+//fmt2 = "%15s%15s%15s";
+//s2 = cnames$~str_stats$~itos(N_obs);
+//sprintf(fmt2, s2, start_date[., 2], end_date[., 2]);
+output off;
+
+// Reclassify rejection vectors for all tests
+{ reject_adf,  reject_adf_cts } = countsRejectionsRates(reject_adf_brks, "ADF Conclusion");
+{ reject_pt,  reject_pt_cts } = countsRejectionsRates(reject_pt_brks, "PT Conclusion");
+{ reject_Za,  reject_Za_cts } = countsRejectionsRates(reject_Za_brks, "Za Conclusion");
+{ reject_MZa,  reject_MZa_cts } = countsRejectionsRates(reject_MZa_brks, "MZa Conclusion");
+{ reject_MZt,  reject_MZt_cts } = countsRejectionsRates(reject_MZt_brks, "MZt Conclusion");
+{ reject_MSB,  reject_MSB_cts } = countsRejectionsRates(reject_MSB_brks, "MSB Conclusion");
+{ reject_MPT,  reject_MPT_cts } = countsRejectionsRates(reject_MPT_brks, "MPT Conclusion");
+
+//// Plot results
+struct plotControl ctl;
+ctl = plotGetDefaults("bar");
+plotClearLayout();
+plotLayout(3, 3, 1);
+plotSetTitle(&ctl, "ADF Test Results with Breaks (%)");
+plotFreq(ctl, reject_adf, 1);
+
+plotLayout(3, 3, 2);
+plotSetTitle(&ctl, "PT Test Results with Breaks  (%)");
+plotFreq(ctl, reject_pt, 1);
+
+plotLayout(3, 3, 3);
+plotSetTitle(&ctl, "Za Test Results with Breaks  (%)");
+plotFreq(ctl, reject_Za, 1);
+
+plotLayout(3, 3, 4);
+plotSetTitle(&ctl, "MZa Test Results with Breaks  (%)");
+plotFreq(ctl, reject_MZa, 1);
+
+plotLayout(3, 3, 5);
+plotSetTitle(&ctl, "MZt Test Results with Breaks  (%)");
+plotFreq(ctl, reject_MZt, 1);
+
+plotLayout(3, 3, 6);
+plotSetTitle(&ctl, "MSB Test Results with Breaks  (%)");
+plotFreq(ctl, reject_MSB, 1);
+
+plotLayout(3, 3, 7);
+plotSetTitle(&ctl, "MPT Test Results with Breaks  (%)");
+plotFreq(ctl, reject_MPT, 1);
+
+if save_on;
+    plotSave(spath2 $+ "breaks-unit-root-results.png", 11 | 8.5, "in");
+endif;

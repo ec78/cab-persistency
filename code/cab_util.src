@@ -1,0 +1,116 @@
+proc (1) = rollingARIMAFit(yt, wind, ...);
+    local beta_, res, T, fnl_T;
+    
+    // Setup Estimation Parameters
+    T = rows(yt);
+    fnl_T = T-wind;
+    
+    // Storage Matrices
+    beta_=zeros(T, 2);
+    res = zeros(T, 1);
+    
+    for i(1, fnl_T, 1);
+        struct arimamtOut amo;
+        amo = arimaFit(yt[i:(wind-1)+i], 1);
+        beta_[i, .] = amo.b';
+    endfor;
+    
+    retp(beta_);
+endp;
+
+proc (2) = countsRejectionsRates(reject_vector, varname);
+    local reject_df, reject_cts;
+    
+    reject_df = asDf(reclassifyRejectionRates(reject_vector), varname);
+    reject_cts = _frequency(reject_df, 1, 1, 1);
+
+    retp(reject_df, reject_cts);
+endp;
+
+proc (1) = reclassifyRejectionRates(reject_vector);
+    local to, from;
+    
+    // Values to reclassify to
+    to = "Reject at 1%"$|"Reject at 5%"$|"Reject at 10%"$|"Cannot reject";
+    
+    // Values to classify from
+    from = { .01, 0.05, 0.10, 0 };
+    
+    // Reclassify vector
+    retp(reclassify(reject_vector, from, to));
+endp;
+
+proc (1) = addAsterisks(stats_vec, rejection);
+    local str_stats, e1, e2, e3;
+    
+    // Convert to string
+    str_stats = ntos(stats_vec, 4);
+    
+    // Add asterisks
+    for i(1, rows(stats_vec), 1);
+        if rejection[i] == 0.01;
+            str_stats[i] = str_stats[i]$+"***";
+        elseif rejection[i] == 0.05;
+            str_stats[i] = str_stats[i]$+"**";
+        elseif rejection[i] == 0.10;
+            str_stats[i] = str_stats[i]$+"*";
+        endif;
+    endfor;
+    
+    retp(str_stats);
+endp;
+
+proc (1) = addAsterisksToStats(stats_vec, cv_vec, h0);
+    local str_stats, e1, e2, e3;
+    
+    // Convert to string
+    str_stats = ntos(stats_vec, 4);
+    
+    // Add asterisks
+    if h0 == 1;
+        e1 = (stats_vec .<= cv_vec[., 1]);
+        e2 = (stats_vec .<= cv_vec[., 2] .and stats_vec .> cv_vec[., 1]);
+        e3 = (stats_vec .<= cv_vec[., 3] .and stats_vec .> cv_vec[., 2]);
+    elseif h0 == 2;
+        e1 = (stats_vec .>= cv_vec[., 1]);
+        e2 = (stats_vec .>= cv_vec[., 2] .and stats_vec .< cv_vec[., 1]);
+        e3 = (stats_vec .>= cv_vec[., 3] .and stats_vec .< cv_vec[., 2]);
+    endif;
+    
+    for i(1, rows(stats_vec), 1);
+        if e1[i];
+            str_stats[i] = str_stats[i]$+"***";
+        elseif e2[i];
+            str_stats[i] = str_stats[i]$+"**";
+        elseif e3[i];
+            str_stats[i] = str_stats[i]$+"*";
+        endif;
+    endfor;
+    
+    retp(str_stats);
+endp;
+
+// Use 0 for less than, 1 for greater than
+proc (1) = checkRejection(stat, cv, direction);
+    local rejection;
+    
+    rejection = 0;
+    if direction;
+        if stat >= cv[1];
+            rejection = 0.01;
+        elseif stat >= cv[2];
+            rejection = 0.05;
+        elseif stat >= cv[3];
+            rejection = 0.10;
+        endif;
+    else;
+        if stat <= cv[1];
+            rejection = 0.01;
+        elseif stat <= cv[2];
+            rejection = 0.05;
+        elseif stat <= cv[3];
+            rejection = 0.10;
+        endif;
+    endif;
+    retp(rejection);
+endp;
