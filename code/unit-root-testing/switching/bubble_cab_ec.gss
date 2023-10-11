@@ -11,7 +11,11 @@ fname = "reg_data.gdat";
 
 // Results saving paths
 spath = "results/unit-root-tests/switch/";
-spath2 = "D:/development/GitHub/cab-persistency/results/unit-root-tests/with-breaks/";
+
+spath_phi = "results/unit-root-tests/switch/plots/phi/";
+spath_mu = "results/unit-root-tests/switch/plots/mu/";
+spath_sigma = "results/unit-root-tests/switch/plots/sigma/";
+
 
 /*
 ** Perform import
@@ -24,7 +28,7 @@ ccodes = unique(data[., "cn"]);
 
 // Get column labels
 { cnames, keys } = getColLabels(data, "Country");
-N = rows(cnames);
+N_groups = rows(cnames);
 
 // Turn saving on
 //save_on = 1;
@@ -40,16 +44,20 @@ end_date = asDF(aggregate(packr(tmp_data[., "date3" "Country"]), "max", "Country
 /*
 ** Storage Matrices
 */
-N_obs = zeros(N, 1);
+N_obs = zeros(N_groups, 1);
+results = arrayinit(N_groups|20|3, 0);
+probs = arrayinit(N_groups|275|4, 0);
 
-for i(1, N, 1);
+for i(1, N_groups, 1);
     
     // Select individual series
     yt = __get_test_y(data, cnames[i]);
+    dates = yt[., "date2"];
+    yt = yt[., "pct_ca_reg"];
     
     // Get number of rows
     nnn = rows(yt);
- 
+    
     // Data transformations
     dya = yt[2:nnn] - yt[1:nnn-1];
     yu = yt[2:nnn];
@@ -62,18 +70,16 @@ for i(1, N, 1);
     // Starting values
     x0 = 0.01|0.01|3|3|3|3|3|3|stdc(dya)|0.01|zeros(4, 1)|7*stdc(dya)|0.01|zeros(4, 1);
     
-    // Include
+    // IncludeD
     kc = 1;
     
     // Include proc files
-#include litter8sNEW.gss;   
-#include litter8sNEWt.gss;
+#include ./code/unit-root-testing/switching/litter8sNEW.gss;
+#include ./code/unit-root-testing/switching/litter8sNEWt.gss;
     
     @ -------------------------------------------------------------------------- @
     @  The following code controls the call for gauss21's maximization routine  @
     @ -------------------------------------------------------------------------- @
-    
-    
     optset;
     
 #include optmum.ext;
@@ -82,11 +88,9 @@ for i(1, N, 1);
     
     { x, ef, g, h } = optmum(&ofn, x0);
     
-    
     kc = 2;
     call ofn(x);
     kc = 1;
-    
     
     /* -------------------------------------------- */
     hes = hessp(&ofn, x);   @ The lik proc returns the sample likelihood @
@@ -97,7 +101,6 @@ for i(1, N, 1);
     /* The following code generates various estimates of the asymptotic
     covariance matrix of the ML estimator   */
     
-    
     /*
     ** Pick covariance computation
     ** 1 = inverse of the Hessian @
@@ -105,48 +108,24 @@ for i(1, N, 1);
     ** 3 = heteroscedasticity consistent @
     ** 4 = heter. and autocor. consistent @
     */
-    covmat = 1; 
+    covmat = 2;
     
     // 1 for prewhitening
-    whiten = 1;    
-        
+    whiten = 1;
+    
     /*
     ** Pick kernel
     ** 1 = Quadratic Spectral
     ** 2 = Parzen
     ** 3 = Bartlett
     */
-    kernel = 1;       
-
+    kernel = 1;
+    
     // Automatic bandwidth selection
-    bandw  = 0;                
+    bandw  = 0;
     
     // Get covariance matrix
     oh = __get_covmat(hes, opg, gr, covmat, whiten, kernel);
-    
-//    if covmat == 1;
-//        oh = invpd(hes);
-//    elseif covmat == 2;
-//        oh = inv(opg);
-//    elseif covmat == 3;
-//        oh = invpd(hes)*opg*invpd(hes);
-//    elseif covmat == 4;
-        
-//        // Prewhitening via VAR(1)
-//        if whiten == 1;
-//            { scm, te, fls } = prewhitening(gr);
-//        else;
-//            scm = gr;
-//            te = rows(gr)-1;
-//        endif;
-        
-//        // Bandwidth Selection Using AR(1) Models
-//        bande = select_bandwidth(scm, te, kernel, bandw);
-        
-//        // Covariance Matrix Estimation
-//        oh = covariance_mat(gr, scm, te, fls, opg, te, bande, kernel, whiten);
-        
-//    endif;
     
     // Standard deviation
     std = sqrt(diag(oh));
@@ -154,12 +133,12 @@ for i(1, N, 1);
     
     // Transform standard deviation
     std = __transform_std(x, std);
-  
+    
     // Transform coefficients
     x = __transform_coeff(x);
-  
+    
     tst = x./std;
-        
+    
     "alpha0    ";;
     (x[1, 1]|std[1, 1]|tst[1, 1]);
     "alpha1    ";;
@@ -177,42 +156,86 @@ for i(1, N, 1);
     "  qv      ";;
     (x[8, 1]|std[8, 1]|tst[8, 1]);
     
-    
-    
-    
     " Sig 0    ";;
-    (x[9,1]|std[9,1]|tst[9,1]);
+    (x[9, 1]|std[9, 1]|tst[9, 1]);
     "phi0 ";;
-    (x[10,1]|std[10,1]|tst[10,1]);
+    (x[10, 1]|std[10, 1]|tst[10, 1]);
     "firstdif1 ";;
-    (x[11,1]|std[11.1]|tst[11,1]);
+    (x[11, 1]|std[11, 1]|tst[11, 1]);
     "firstdif2 ";;
-    (x[12,1]|std[12,1]|tst[12,1]);
+    (x[12, 1]|std[12, 1]|tst[12, 1]);
     "firstdif3 ";;
-    (x[13,1]|std[13,1]|tst[13,1]);
+    (x[13, 1]|std[13, 1]|tst[13, 1]);
     "firstdif4  ";;
-    (x[14,1]|std[14,1]|tst[14,1]);
+    (x[14, 1]|std[14, 1]|tst[14, 1]);
     "Sig1  ";;
-    (x[15,1]|std[15,1]|tst[15,1]);
+    (x[15, 1]|std[15, 1]|tst[15, 1]);
     "phi 1 ";;
-    (x[16,1]|std[16,1]|tst[16,1]);
+    (x[16, 1]|std[16, 1]|tst[16, 1]);
     "firstdif1 ";;
-    (x[17,1]|std[17,1]|tst[17,1]);
+    (x[17, 1]|std[17, 1]|tst[17, 1]);
     "firstdif2   ";;
-    (x[18,1]|std[18,1]|tst[18,1]);
+    (x[18, 1]|std[18, 1]|tst[18, 1]);
     "firstdif3   ";;
-    (x[19,1]|std[19,1]|tst[19,1]);
+    (x[19, 1]|std[19, 1]|tst[19, 1]);
     "firstdif4   ";;
-    (x[20,1]|std[20,1]|tst[20,1]);
+    (x[20, 1]|std[20, 1]|tst[20, 1]);
+    
+    results[i, ., .] = x~std~tst;
+    
+    probs[i, 1:rows(proba), 1] = trimr(dates, 5, 0);
+    probs[i, 1:rows(proba), 2:4] = proba[., 1:3];
+    
+    y_gr = trimr(yt[., "pct_ca_reg"], 5, 0);
+    dates_gr = trimr(dates, 5, 0);   
+    
+    __plot_graph(y_gr, proba[., 3], dates_gr, cnames[i], x[10, 1], x[16, 1], "phi", spath_phi);
+    __plot_graph(y_gr, proba[., 2], dates_gr, cnames[i], x[9, 1], x[15, 1], "sigma", spath_sigma);
+    __plot_graph(y_gr, proba[., 1], dates_gr, cnames[i], x[1, 1], x[2, 1], "mu", spath_mu);
+    
+//    // Set up plot
+//    struct plotControl pctl;
+//    pctl = plotGetDefaults("xy");
+    
+//    // Set up title
+//    plotSetTitle(&pCtl, cnames[i], "Arial", 18);
+    
+//    // Set up the axis
+//    // Set the first curve to use the left y-axis and the second curve to use the right
+//    plotSetWhichYAxis(&pctl, "left" $| "right");
+
+//    // Set the left and right y-axis labels
+//    plotSetFonts(&pctl, "axes", "Arial", 14);
+//    plotSetYLabel(&pctl, "CAB (% GDP)");
     
     
+//    // Line style
+//    plotSetLineStyle(&pctl, 1);
+//    plotSetLineColor(&pctl, "black");
     
+//    plotLayout(2, 1, 1);
+//    plotXY(pctl, trimr(dates, 5, 0), trimr(yt[., "pct_ca_reg"], 5, 0));
     
+//    // Set the left and right y-axis labels
+//    plotSetLineStyle(&pctl, 2);
+//    plotSetLineColor(&pctl, "black");
     
-    output file = probsPolp1.out reset;
-    proba[., 1:3];
-    output off;
+//    // Set text interpreter
+//    plotSetTextInterpreter(&pctl, "latex", "title yaxis");
     
+//    // Set the y-axis labels
+//    gr_title = "P_{S_3}, \phi_0 =" $+ ntos(x[10, 1], 3) $+ ", \phi_1 =" $+ ntos(x[16, 1], 3);
+//    plotSetTitle(&pctl, gr_title);
+//    plotSetYLabel(&pctl, "P_{S_3}");
+    
+//    plotLayout(2, 1, 2);
+//    plotXY(pctl, trimr(dates, 5, 0), proba[., 3]);
+    
+//    // Save file
+//    plt_name = spath2 $+ cnames[i] $+ ".png";
+//    plotSave(plt_name, 800|600, "px");
+    
+//    plotClearLayout();
     
     n = na;
     nn = n-4;
@@ -256,6 +279,92 @@ for i(1, N, 1);
     endo;
 endfor;
 
+// Get results
+phi_estimates = __get_phi_estimates(results, cnames, N_groups);
+
+proc (0) = __plot_graph(y, prob, dates, cname, coeff0, coeff1, var_label, spath); 
+    local gr_title, plt_name;
+    
+    plotOpenWindow();
+    
+    // Set up plot
+    struct plotControl pctl;
+    pctl = plotGetDefaults("xy");
+    
+    // Set up fonts
+    plotSetFonts(&pctl, "axes", "Arial", 14);
+    plotSetFonts(&pctl, "title", "Arial", 18);
+    
+    // Panel 1 title
+    plotSetTitle(&pCtl, cname);
+    
+    // Set the y-label panel 1
+    plotSetYLabel(&pctl, "CAB (% GDP)");
+    
+    
+    // Line style 
+    plotSetLineStyle(&pctl, 1);
+    plotSetLineColor(&pctl, "black");
+    
+    plotLayout(2, 1, 1);
+    
+    // Plot original series
+    plotXY(pctl, dates, y);
+    
+    // Set the left and right y-axis labels
+    plotSetLineStyle(&pctl, 2);
+    plotSetLineColor(&pctl, "black");
+    
+    // Set text interpreter
+    plotSetTextInterpreter(&pctl, "latex", "title yaxis");
+    plotSetYRange(&pctl, 0, 1);
+    
+    // Set the y-axis labels
+    if var_label $== "phi";
+        gr_title = "P_{S_3}, \\phi_0 =" $+ ntos(coeff0, 3) $+ ", \\phi_1 =" $+ ntos(coeff1, 3);
+        plt_name = spath $+ cname $+ "_S3.png";
+        
+        plotSetYLabel(&pctl, "P_{S_3}");
+    elseif var_label $== "mu";
+        gr_title = "P_{S_1}, \\mu_0 =" $+ ntos(coeff0, 3) $+ ", \\mu_1 =" $+ ntos(coeff1, 3);
+        plt_name = spath $+ cname $+ "_S1.png";
+        
+        plotSetYLabel(&pctl, "P_{S_1");
+    elseif var_label $== "sigma";
+        gr_title = "P_{S_2}, \\sigma_0 =" $+ ntos(coeff0, 3) $+ ", \\sigma_1 =" $+ ntos(coeff1, 3);
+        plt_name = spath $+ cname $+ "_S2.png";
+        
+        plotSetYLabel(&pctl, "P_{S_2}");
+    endif;
+    
+    plotSetTitle(&pctl, gr_title);
+    
+    
+    plotLayout(2, 1, 2);
+    plotXY(pctl, dates, prob);
+    
+    // Save file
+    plotSave(plt_name, 800|600, "px");
+    
+    plotClearLayout();
+endp;
+
+proc (1) = __get_phi_estimates(results, cnames, N_groups);
+    local phi_estimates;
+    
+    phi_estimates = zeros(N_groups, 4);
+    
+    for i(1, N_groups, 1);
+        i;
+        phi_estimates[i, 1:2] = results[i, 10, 1 3];
+        phi_estimates[i, 3:4] = results[i, 16, 1 3];
+    endfor;
+    phi_estimates = asDf(cnames, "Country")~asDF(phi_estimates, "Phi0", "Tstat0", "Phi1", "Tstat1")~asDF(phi_estimates[., 1] .>0, "Phi0>0")~asDF(phi_estimates[., 3] .>0, "Phi1>0");
+    saved(phi_estimates, spath$+"/phi_estimates.csv");
+    
+    retp(phi_estimates);
+endp;
+
 proc (1) = __transform_coeff(x);
     local a1, a2, b1, b2, c1, c2;
     
@@ -277,6 +386,8 @@ proc (1) = __transform_coeff(x);
     
     x[9, 1] = abs(x[9, 1]);
     x[15, 1] = abs(x[15, 1]);
+    
+    retp(x);
 endp;
 
 proc (1) = __transform_std(x, std);
@@ -309,15 +420,16 @@ proc (1) = __transform_std(x, std);
 endp;
 
 proc (1) = __get_test_y(data, cname);
+    local e, tmp_data, y_test;
     
     // Select data for country
     e = data[., "Country"] .== cname;
     
     // Get test data
-    tmp_data = selif(data[., "pct_ca_reg"], e);
+    tmp_data = selif(data[., "date2" "pct_ca_reg"], e);
     
     // Get CAB for country
-    y_test = packr(tmp_data[., "pct_ca_reg"]);
+    y_test = packr(tmp_data[., "date2" "pct_ca_reg"]);
     
     retp(y_test);
 endp;
@@ -350,7 +462,7 @@ proc(1) = __get_sandwich(hes, opg);
 endp;
 
 proc(3) = prewhitening(gr);
-    local res, fls, sc, scl, ic;
+    local scm, te, sci, scli, res, fls, sc, scl, ic;
     
     res = zeros(rows(gr)-2,cols(gr));
     fls = zeros(cols(gr),cols(gr));

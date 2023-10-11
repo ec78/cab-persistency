@@ -1,0 +1,220 @@
+/*LIKEPROC
+
+This proc evaluates the Markov switching likelihood function */
+
+/* ------------------------------------------------------- */
+
+proc tofn(th);
+    local PIG, PI1, PI2, PI3, p5, p6, p7, p8, pb, qb, pxe, pxf, pxg, pxh, 
+    aba, aca, ada, aea, pxa, pxb, pxc, pxd, p1e, p1f, p1g, p1h, alpha0, alpha1,
+    pm, pv, qm, qv, sig0, sig1, p1, p2, p3, p4, p1a, p1b, p1c, p1d, f, fit, it, 
+    pas1, pas0, phi1, qq, junk, aphi1, aphi2, aphi3, aphi4, fhi1, afhi1, afhi2, 
+    afhi3, afhi4, itt, z1, z0, zz;
+    
+    junk = zeros(16,2);
+    /* ================= */
+    /*  Establish values of constant parameters */
+    qq = zeros(1,1);
+    
+    alpha0 = th[1,1];
+    alpha1  = th[2,1];
+    
+    pm = (th[3,1]^2)/( 1 + th[3,1]^2);
+    qm = (th[4,1]^2)/( 1 + th[4,1]^2);
+    pv = (th[5,1]^2)/( 1 + th[5,1]^2);
+    qv = (th[6,1]^2)/( 1 + th[6,1]^2);
+    pb = (th[7,1]^2)/( 1 + th[7,1]^2);
+    qb = (th[8,1]^2)/( 1 + th[8,1]^2);
+    
+    
+    PI1 = (qm~(1-pm))|((1-qm)~pm);
+    PI2 = (qv~(1-pv))|((1-qv)~pv);
+    PI3 = (qb~(1-pb))|((1-qb)~pb);
+    
+    
+    PIG = PI1.*.PI2.*.PI3;
+    
+    sig0 = abs(th[9,1]);
+    phi1 = th[10,1];
+    aphi1 = th[11,1];
+    aphi2 = th[12,1];
+    aphi3 = th[13,1];
+    aphi4 = th[14,1];
+    
+    sig1 = abs(th[15,1]);
+    fhi1 = th[16,1];
+    afhi1 = th[17,1];
+    afhi2 = th[18,1];
+    afhi3 = th[19,1];
+    afhi4 = th[20,1];
+    
+    
+    
+    aba = PIG;
+    
+    aca = eye(8) - aba;
+    ada = aca|ones(1,8);
+    aea = inv(ada'ada)*ada';
+    
+    p1 = aea[1,9];
+    p2 = aea[2,9];
+    p3 = aea[3,9];
+    p4 = aea[4,9];
+    p5 = aea[5,9];
+    p6 = aea[6,9];
+    p7 = aea[7,9];
+    p8 = aea[8,9];
+    
+    
+    if kc == 2;
+        "parameter vector:";
+        th';
+        "";
+        "Obs Current  1-lag    2-lag    3-lag ";
+    endif;
+    
+    
+    zz = yu[4:na-1,1]~dya[4:na-1,1]~dya[3:na-2,1]~dya[2:na-3,1]~dya[1:na-4,1];
+    
+    pas0 = (phi1~aphi1~aphi2~aphi3~aphi4);
+    pas1 = (fhi1~afhi1~afhi2~afhi3~afhi4);
+    
+    f = zeros(na-4,1);
+    it = 5;
+    
+    do until it > na;
+        itt = it - 4;
+        
+        
+        z0 = dya[it,1] -  pas0*zz[itt,.]';
+        z1 = dya[it,1] -  pas1*zz[itt,.]';
+        
+        if abs((z0-alpha0)/sig0) > 15;
+            qq = 0;
+        else;
+            qq = exp((-((z0-alpha0)^2))/(2*(sig0^2)))/(sqrt(2*pi)*sig0);
+        endif;
+        
+        p1a=(PIG[1,1]*p1|PIG[1,2]*p2|PIG[1,3]*p3|PIG[1,4]*p4|PIG[1,5]*p5|PIG[1,6]*p6|PIG[1,7]*p7|PIG[1,8]*p8).*qq;
+        
+        
+        
+        
+        if abs((z1-alpha0)/sig0) > 15;
+            qq = 0;
+        else;
+            qq = exp((-((z1-alpha0)^2))/(2*(sig0^2)))/(sqrt(2*pi)*sig0);
+        endif;
+        
+        p1b=(PIG[2,1]*p1|PIG[2,2]*p2|PIG[2,3]*p3|PIG[2,4]*p4|PIG[2,5]*p5|PIG[2,6]*p6|PIG[2,7]*p7|PIG[2,8]*p8).*qq;
+        
+        
+        
+        
+        if abs((z0-alpha0)/sig1) > 15;
+            qq = 0;
+        else;
+            qq = exp((-((z0-alpha0)^2))/(2*(sig1^2)))/(sqrt(2*pi)*sig1);
+        endif;
+        
+        p1c=(PIG[3,1]*p1|PIG[3,2]*p2|PIG[3,3]*p3|PIG[3,4]*p4|PIG[3,5]*p5|PIG[3,6]*p6|PIG[3,7]*p7|PIG[3,8]*p8).*qq;
+        
+        
+        
+        if abs((z1-alpha0)/sig1) > 15;
+            qq = 0;
+        else;
+            qq = exp((-((z1-alpha0)^2))/(2*(sig1^2)))/(sqrt(2*pi)*sig1);
+        endif;
+        
+        p1d=(PIG[4,1]*p1|PIG[4,2]*p2|PIG[4,3]*p3|PIG[4,4]*p4|PIG[4,5]*p5|PIG[4,6]*p6|PIG[4,7]*p7|PIG[4,8]*p8).*qq;
+        
+        
+        if abs((z0-alpha1)/sig0) > 15;
+            qq = 0;
+        else;
+            qq = exp((-((z0-alpha1)^2))/(2*(sig0^2)))/(sqrt(2*pi)*sig0);
+        endif;
+        
+        p1e=(PIG[5,1]*p1|PIG[5,2]*p2|PIG[5,3]*p3|PIG[5,4]*p4|PIG[5,5]*p5|PIG[5,6]*p6|PIG[5,7]*p7|PIG[5,8]*p8).*qq;
+        
+        
+        
+        
+        if abs((z1-alpha1)/sig0) > 15;
+            qq = 0;
+        else;
+            qq = exp((-((z1-alpha1)^2))/(2*(sig0^2)))/(sqrt(2*pi)*sig0);
+        endif;
+        
+        p1f=(PIG[6,1]*p1|PIG[6,2]*p2|PIG[6,3]*p3|PIG[6,4]*p4|PIG[6,5]*p5|PIG[6,6]*p6|PIG[6,7]*p7|PIG[6,8]*p8).*qq;
+        
+        
+        
+        
+        if abs((z0-alpha1)/sig1) > 15;
+            qq = 0;
+        else;
+            qq = exp((-((z0-alpha1)^2))/(2*(sig1^2)))/(sqrt(2*pi)*sig1);
+        endif;
+        
+        p1g=(PIG[7,1]*p1|PIG[7,2]*p2|PIG[7,3]*p3|PIG[7,4]*p4|PIG[7,5]*p5|PIG[7,6]*p6|PIG[7,7]*p7|PIG[7,8]*p8).*qq;
+        
+        
+        
+        if abs((z1-alpha1)/sig1) > 15;
+            qq = 0;
+        else;
+            qq = exp((-((z1-alpha1)^2))/(2*(sig1^2)))/(sqrt(2*pi)*sig1);
+        endif;
+        
+        p1h=(PIG[8,1]*p1|PIG[8,2]*p2|PIG[8,3]*p3|PIG[8,4]*p4|PIG[8,5]*p5|PIG[8,6]*p6|PIG[8,7]*p7|PIG[8,8]*p8).*qq;
+        
+        
+        pxa = sumc(p1a);
+        pxb = sumc(p1b);
+        pxc = sumc(p1c);
+        pxd = sumc(p1d);
+        pxe = sumc(p1e);
+        pxf = sumc(p1f);
+        pxg = sumc(p1g);
+        pxh = sumc(p1h);
+        
+        
+        
+        
+        fit = sumc((pxa|pxb|pxc|pxd|pxe|pxf|pxg|pxh));
+        
+        if fit > 0;
+            f[it-4] = ln(fit);
+        else;
+            f[it-4] = - 1000;
+        endif;
+        p1 = pxa/fit;
+        p2 = pxb/fit;
+        p3 = pxc/fit;
+        p4 = pxd/fit;
+        p5 = pxe/fit;
+        p6 = pxf/fit;
+        p7 = pxg/fit;
+        p8 = pxh/fit;
+        
+        
+        proba[it-4,1] = p1+p2+p3+p4;
+        proba[it-4,2] = p1+p2+p5+p6;
+        proba[it-4,3] = p1+p3+p5+p7;
+        
+        @ if kc == 2;
+        format /rd 5,2;
+        format 8,4;p1;;p2;;p3;;p4;
+        format /m0 /rd 14,6;
+        endif;@
+        
+        
+        it = it+1;
+    endo;
+    
+    
+    retp(-f);
+endp;
+/* ----------------------------------------------------------- */
