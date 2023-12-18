@@ -21,6 +21,7 @@ ccodes = unique(pre_data[., "cn"]);
 // Get pre-covid summary table
 table_name = spath2 $+ "precovid-summary-stats.csv";
 pre_sum_table = getCABSummary(pre_data, "date3", "Country", "pct_ca_reg");
+end;
 saved(pre_sum_table, table_name);
 //output off;
 

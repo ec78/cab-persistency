@@ -1,0 +1,248 @@
+new;
+cls;
+library optmum;
+
+
+// Data loading path
+fpath = "data/";
+
+// Full data file
+fname = "reg_data.gdat";
+
+// Coefficient estimates
+fname_coeff = "coeffs.gdat";
+fname_se = "se.gdat";
+fname_tstats = "tstats.gdat";
+
+// Results saving paths
+spath = "results/unit-root-tests/switch/";
+spath_phi = spath $+ "plots/phi/";
+spath_mu = spath $+ "plots/mu/";
+spath_sigma = spath $+ "plots/sigma/";
+
+/*
+** Perform import
+*/
+// Full dataset
+data = loadd(fpath$+fname);
+data = asdate(move(data), "%YQ%q", "date3");
+
+// Get estimates
+coeffs = loadd(spath $+ fname_coeff);
+se = loadd(spath $+ fname_se);
+tstats = loadd(spath $+ fname_tstats);
+loadarray probs = results/unit-root-tests/switch/probs;
+
+// Get column labels
+{ cnames, keys } = getColLabels(data, "Country");
+N_groups = rows(cnames);
+
+/*
+** Storage Matrices
+*/
+pBoot0Expl = zeros(N_groups, 2);
+pBoot1Expl = zeros(N_groups, 2);
+
+pBoot0Stationary = zeros(N_groups, 2);
+pBoot1Stationary = zeros(N_groups, 2);
+
+/*
+** Settings for replication
+*/
+nrepl = 1000;
+kk = 1;
+TBoot0 = zeros(2, N_groups);
+TBoot1 = zeros(2, N_groups);
+
+//N_groups = 3;
+// Loop through each country
+for i(1, N_groups, 1);
+    
+    // Load CAB series
+    yt = __get_test_y(data, cnames[i]);
+    dates = yt[., "date2"];
+    yy = yt[., "pct_ca_reg"];
+    
+    // Select probabilities
+    yx = getMatrix(probs, i);
+    yx = delcols(yx, 1);
+    
+    yx = trimr(yx, 0, rows(yx)-rows(yy));
+    
+    // Create dummies for regimes based on
+    // estimated probabilities
+    { D1a, D1, D2a, D2, D3a, D3 } = __boot_get_dummies(yx);
+    
+    // Storage matrices for bootstrap iterations
+    xxx = zeros(nrepl, 2);
+    sss = zeros(nrepl, 2);
+    
+    // Load parameter values @
+    alpha0 = coeffs[1, i];
+    alpha1 = coeffs[2, i];
+    Sig0  =  coeffs[9, i];
+    phi0  =  coeffs[10, i];
+    aphi1 =  coeffs[11, i];
+    aphi2 =  coeffs[12, i];
+    aphi3 =  coeffs[13, i];
+    aphi4 =  coeffs[14, i];
+    Sig1 =   coeffs[15, i];
+    phi1 =   coeffs[16, i];
+    afhi1 =  coeffs[17, i];
+    afhi2 =  coeffs[18, i];
+    afhi3 =  coeffs[19, i];
+    afhi4 =  coeffs[20, i];
+    
+    pm = coeffs[3, i];
+    qm = coeffs[4, i];
+    pv = coeffs[5, i];
+    qv = coeffs[6, i];
+    pb = coeffs[7, i];
+    qb = coeffs[8, i];
+    
+    xpm = sqrt(pm/(1-pm));
+    xqm = sqrt(qm/(1-qm));
+    xpv = sqrt(pv/(1-pv));
+    xqv = sqrt(qv/(1-qv));
+    xpb = sqrt(pb/(1-pb));
+    xqb = sqrt(qb/(1-qb));
+    
+    // Transform y
+    yus = yy[1:5]|zeros(rows(yy)-5, 1);
+    pas00 = (aphi1~aphi2~aphi3~aphi4);
+    pas11 = (afhi1~afhi2~afhi3~afhi4);
+    
+    // Replications loop
+    jj = 1;
+    do while jj <= nrepl;   @ replications loop @
+        
+        // Set seeds
+        seeds =  987654321 +jj;
+        
+        // Randomly Generate epsilons
+        { epsilon, state } = rndn(rows(yy)-4, 1, seeds);
+        
+        // DGP
+        it = 6;
+        do until  it > rows(yy);
+            yus[it,1] = yus[it-1,1] + (D1[it-5])*alpha0 + (1-D1[it-5])*alpha1
+                +(D3[it-5])*(pas00*((yus[it-1]-yus[it-2])~(yus[it-2]-yus[it-3])~(yus[it-3]-yus[it-4])~(yus[it-4]-yus[it-5]))')
+                +(1-D3[it-5])*(pas11*((yus[it-1]-yus[it-2])~(yus[it-2]-yus[it-3])~(yus[it-3]-yus[it-4])~(yus[it-4]-yus[it-5]))')
+                +((D2[it-5])*Sig0 + (1-D2[it-5])*Sig1)*epsilon[it-4,1];
+            
+            it = it+1;
+        endo;
+        
+        nnn = rows(yus);
+        yt = yus;
+        dya = yt[2:nnn]-yt[1:nnn-1];
+        yu = yt[2:nnn];
+        na = rows(yu);
+        
+        // Starting probability
+        resid = zeros(na - 4, 1);
+        proba = zeros(na - 4, 3);
+        x0 = alpha0|alpha1|xpm|xqm|xpv|xqv|xpb|xqb|10*sig0|0|(pas00')|10*sig1|0|(pas11');
+        
+        kc=1;
+        
+#include ./code/unit-root-testing/switching/litter8sNEW.gss;
+ 
+        @ -------------------------------------------------------------------------- @
+        @  The following code controls the call for gauss21's maximization routine  @
+        @ -------------------------------------------------------------------------- @
+        optset;     
+#include optmum.ext;
+        _opalgr = 2;
+        _opgtol = 1.e-06;
+        _opstep = 2;
+        _opmiter = 200;
+        __output =  0;
+        {x, ef, g, h } = optmum(&ofn, x0);
+        
+        kc = 2;
+        call ofn(x);
+        kc = 1;
+        
+        format /m0 /rd 14,6;
+        jj;
+        
+        format /rd 5,4;
+        
+        if maxc(x) < 15 and minc(x) > -15;
+            h = (hessp(&ofn, x));
+            call ofn(x);
+            if minc(eigh(h)) <= 0;
+                goto final;
+            else;
+                h = invpd(h);
+                std = sqrt(diag(h));
+                
+                kk = kk+1;
+                
+                xxx[jj, .] = x[10, 1]~x[16, 1];
+                sss[jj, .] = std[10, 1]~std[16, 1];
+                
+            endif;
+            
+            final:
+            endif;
+        
+        jj = jj+1;
+    endo;   
+    
+    xx = selif(xxx, sss[.,1] .gt 0);
+    ss = selif(sss, sss[.,1] .gt 0);
+    
+//    format /m1 /rd 5,4;
+//    xx;
+
+//    format /m1 /rd 5,4;
+//    ss;
+    kk;
+    
+    // Store bootstrapped T-stats
+    TBoot0 = xx[., 1]./ss[., 1];
+    TBoot1 = xx[., 2]./ss[., 2];
+    
+    // Load t-stats for specific country
+    Ttestphi0 = tstats[10, i];
+    Ttestphi1 = tstats[16, i];
+    
+    // Find explosiveness pvalue
+    Pboot0Expl[i, .] = meanc(dummy(Tboot0, Ttestphi0))';
+    Pboot1Expl[i, .] = meanc(dummy(Tboot1, Ttestphi1))';
+    
+    "Boot pvalue phi0 = ";;
+    Pboot0Expl[i, .];
+    "Boot pvalue phi1 = ";;
+    Pboot1Expl[i, .];
+endfor;
+
+proc (6) = __boot_get_dummies(yx);
+    local D1a, D1, D2a, D2, D3a, D3;
+    
+    D1a = dummy(yx[., 1], 0.5*ones(rows(yx), 1));
+    D1 = 1 - D1a[., 1];
+    D2a = dummy(yx[., 2], 0.5*ones(rows(yx), 1));
+    D2 = 1 - D2a[., 1];
+    D3a = dummy(yx[., 3], 0.5*ones(rows(yx), 1));
+    D3 = 1 - D3a[., 1];
+    
+    retp(D1a, D1, D2a, D2, D3a, D3);
+endp;
+
+proc (1) = __get_test_y(data, cname);
+    local e, tmp_data, y_test;
+    
+    // Select data for country
+    e = data[., "Country"] .== cname;
+    
+    // Get test data
+    tmp_data = selif(data[., "date2" "pct_ca_reg"], e);
+    
+    // Get CAB for country
+    y_test = packr(tmp_data[., "date2" "pct_ca_reg"]);
+    
+    retp(y_test);
+endp;

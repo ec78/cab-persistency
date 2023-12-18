@@ -14,7 +14,7 @@ else;
 endif;
 
 // Results saving paths
-save_on = 1;
+save_on = 0;
 spath = "results/data_plots/reg_data/data_summaries/";
 sfile = "fig5-cab-persistence-grps.png";
 

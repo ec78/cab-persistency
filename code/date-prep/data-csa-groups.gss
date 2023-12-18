@@ -12,7 +12,7 @@ library tsmt;
 ** Load data
 */
 // Data loading path
-fpath = "D:/development/GitHub/cab-persistency/data/";
+fpath = "data/";
 
 // Data file
 ez = 0;
@@ -23,8 +23,8 @@ else;
 endif;
 
 // Results saving paths
-save_on = 1;
-spath = "D:/development/GitHub/cab-persistency/results/data_plots/reg_data/data_summaries/";
+save_on = 0;
+spath = "results/data_plots/reg_data/data_summaries/";
 sfile = "fig1-cab-csa-by-year.png";
 
 // Perform import

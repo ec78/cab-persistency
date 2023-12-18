@@ -1,22 +1,22 @@
-proc (1) = rollingARIMAFit(yt, wind, ...);
-    local beta_, res, T, fnl_T;
+//proc (1) = rollingARIMAFit(yt, wind, ...);
+//    local beta_, res, T, fnl_T;
     
-    // Setup Estimation Parameters
-    T = rows(yt);
-    fnl_T = T-wind;
+//    // Setup Estimation Parameters
+//    T = rows(yt);
+//    fnl_T = T-wind;
     
-    // Storage Matrices
-    beta_=zeros(T, 2);
-    res = zeros(T, 1);
+//    // Storage Matrices
+//    beta_=zeros(T, 2);
+//    res = zeros(T, 1);
     
-    for i(1, fnl_T, 1);
-        struct arimamtOut amo;
-        amo = arimaFit(yt[i:(wind-1)+i], 1);
-        beta_[i, .] = amo.b';
-    endfor;
+//    for i(1, fnl_T, 1);
+//        struct arimamtOut amo;
+//        amo = arimaFit(yt[i:(wind-1)+i], 1);
+//        beta_[i, .] = amo.b';
+//    endfor;
     
-    retp(beta_);
-endp;
+//    retp(beta_);
+//endp;
 
 proc (2) = countsRejectionsRates(reject_vector, varname);
     local reject_df, reject_cts;
@@ -113,4 +113,19 @@ proc (1) = checkRejection(stat, cv, direction);
         endif;
     endif;
     retp(rejection);
+endp;
+
+proc (1) = __get_test_y(data, cname);
+    local e, tmp_data, y_test;
+    
+    // Select data for country
+    e = data[., "Country"] .== cname;
+    
+    // Get test data
+    tmp_data = selif(data[., "date2" "pct_ca_reg"], e);
+    
+    // Get CAB for country
+    y_test = packr(tmp_data[., "date2" "pct_ca_reg"]);
+    
+    retp(y_test);
 endp;

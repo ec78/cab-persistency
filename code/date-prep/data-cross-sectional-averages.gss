@@ -11,7 +11,7 @@ library tspdlib;
 ** Load data
 */
 // Data loading path
-root = "C:/Users/eclow/Documents/GitHub/cab-persistency/results/";
+root = "C:/Users/eclow/Documents/GitHub/cab-persistency/";
 fpath = root $+ "data/";
 
 // Data file
