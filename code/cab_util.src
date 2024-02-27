@@ -129,3 +129,18 @@ proc (1) = __get_test_y(data, cname);
     
     retp(y_test);
 endp;
+
+proc (1) = __get_test_y_w_country(data, cname);
+    local e, tmp_data, y_test;
+    
+    // Select data for country
+    e = data[., "Country"] .== cname;
+    
+    // Get test data
+    tmp_data = selif(data[., "Country" "cn" "ccode" "date2" "pct_ca_reg"], e);
+    
+    // Get CAB for country
+    y_test = packr(tmp_data[., "Country" "cn" "ccode" "date2" "pct_ca_reg"]);
+    
+    retp(y_test);
+endp;

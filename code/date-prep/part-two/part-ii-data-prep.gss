@@ -1,0 +1,33 @@
+new;
+cls;
+
+#include code/cab_util.src
+
+// Data loading path
+fpath = "data/";
+
+// Regime data
+fname_regimes = "regimes_summary.gdat";
+fname_cis_annual = "cis_annual_data12262022.dta";
+fname_fin_crisis = "fin_crisis.xlsx";
+
+// Results saving paths
+spath = "data/";
+
+// Load separate data
+regimes = loadd(fpath $+ fname_regimes);
+cis_annual = loadd(fpath $+ fname_cis_annual); 
+fin_crisis = loadd(fpath $+ fname_fin_crisis, ". + date($year, '%Y')"); 
+
+// Merge data
+reg_2_data = outerJoin(regimes, "ccode"$|"Year", cis_annual, "ccode"$|"year");
+reg_2_data[., "Year"] = asdate(reg_2_data[., "Year"], "%Y");
+reg_2_data = dftype(move(reg_2_data), META_TYPE_CATEGORY, "cn");
+
+reg_2_data = outerJoin(reg_2_data, "ccode"$|"Year", fin_crisis, "ccode"$|"year");
+reg_2_data = sortmc(reg_2_data, "Country"$|"Year");
+reg_2_date = delcols(reg_2_data, "country_name"$|"Country_2"$|"country");
+
+// Saved the data
+saved(reg_2_data, fpath $+ "reg_2_data.gdat");
+saved(reg_2_data, fpath $+ "reg_2_data.xlsx");
