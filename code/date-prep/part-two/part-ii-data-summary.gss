@@ -1,0 +1,70 @@
+new;
+cls;
+
+// Data loading path
+fpath = "data/";
+
+// Filename
+fname = "reg_2_data.gdat";
+
+// Results saving paths
+save_on = 0;
+spath = "results/data_plots/reg_data/data-summaries-ii/";
+sfile = "regime-type-country-groups.png";
+
+// Load data
+reg_2_data = loadd(fpath $+ fname);
+
+/*
+** Total sample
+** Basic summary statistics
+*/
+dstatmt(reg_2_data);
+
+// Regime type frequency
+frequency(reg_2_data, "Regime Type");
+plotFreq(reg_2_data, "Regime Type");
+
+/*
+** Summary Statistics by country group
+*/
+// Set up asian and developing country indicator
+adc = (reg_2_data[., "ldc"] .== 1 .and reg_2_data[., "eap"] .== 1);
+reg_2_data = reg_2_data~asDF(adc, "adc");
+
+/*
+** Iterate through country groups
+*/
+string country_grps = { "idc", "ldc", "emg", "lac", "adc", "euro" };
+
+string gr_title = {"Industrialized Countries", "Developing Countries", "Emerging Countries",
+    "Latin American Countries", "Developing Asian Countries", "Euro Countries" };
+
+// Get Break Points
+{ labels, keys } = getColLabels(reg_2_data, "Regime Type");
+
+// Declare plotControl structure
+struct plotControl myPlt;
+myPlt = plotGetDefaults("bar");
+
+plotSetYRange(&myPlt, 0, 1);
+
+plotOpenWindow();
+for i(1, rows(country_grps), 1);
+    tst_data = selif(reg_2_data, reg_2_data[., country_grps[i]] .== 1);
+  
+    
+    /*
+    ** Frequency plot of regime type
+    */
+    // Set title
+    plotSetTitle(&myPlt, gr_title[i]);
+
+    plotLayout(3, 2, i);
+    
+    // Frequency plot
+    // Draw histogram with default settings
+    plotFreqP(myPlt, tst_data, "Regime Type");
+  
+endfor;
+
