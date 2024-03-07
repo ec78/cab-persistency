@@ -1,0 +1,68 @@
+/*
+** Generate additional country group variables: 
+** Commodity Exporters
+** Financial Openness
+** Fixed/Floating XR regimes
+** Highly indebedted countries. 
+** use the median to make the groups for Highly (above the median) vs. Low (below the median)
+** indebedted countries.
+*/
+
+new;
+cls;
+
+/****************************************************************
+** Data loading information
+****************************************************************/
+// Data loading path
+fpath = "data/";
+
+// Filename
+fname = "reg_2_data.gdat";
+
+// Load data
+reg_2_data = loadd(fpath $+ fname);
+closeall;
+
+/******************************************************
+** Commodity exporters
+******************************************************/
+e = {0.25, 0.5, 0.75, 1};
+
+// Get quantiles
+tmp = quantile(reg_2_data[., "commd"], e);
+
+// Generate dummy
+commodity_exporter = zeros(rows(reg_2_data), 1);
+
+// Reclassify
+commodity_exporter = asDF(reclassifyCuts(reg_2_data[., "commd"], tmp|miss()), "Commodity Exporter");
+commodity_exporter = dftype(move(commodity_exporter), META_TYPE_CATEGORY);
+commodity_exporter = setcollabels(move(commodity_exporter), "First Quantile"$|"Second Quantile"$|"Third Quantile"$|"Fourth Quantile"$|"Missing", seqa(0, 1, 5), "Commodity Exporter");
+
+/******************************************************
+** Financial Openness 
+******************************************************/
+e = {0.25, 0.5, 0.75, 1};
+
+// Reclassify
+financial_openness = asDF(reclassifyCuts(reg_2_data[., "ka_open"], e|miss()), "Financial Openness");
+financial_openness = dftype(move(financial_openness), META_TYPE_CATEGORY);
+financial_openness = setcollabels(move(financial_openness), "First Quantile"$|"Second Quantile"$|"Third Quantile"$|"Fourth Quantile"$|"Missing", seqa(0, 1, 5), "Financial Openness");
+
+/******************************************************
+** Fixed/Floating Regime
+******************************************************/
+e = {0.25, 0.5, 0.75, 1};
+
+// Get quantiles
+tmp = quantile(reg_2_data[., "ers"], e);
+
+// Reclassify
+curr_regime = asDF(reclassifyCuts(reg_2_data[., "ers"], tmp|miss()), "ERS Quantile");
+curr_regime = dftype(move(curr_regime), META_TYPE_CATEGORY);
+curr_regime = setcollabels(move(curr_regime), "First Quantile"$|"Second Quantile"$|"Third Quantile"$|"Fourth Quantile"$|"Missing", seqa(0, 1, 5), "ERS Quantile");
+
+reg_2_data = reg_2_data~curr_regime~financial_openness~commodity_exporter;
+saved(reg_2_data, fpath $+ "reg_2_data.gdat");
+

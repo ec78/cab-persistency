@@ -31,3 +31,5 @@ reg_2_date = delcols(reg_2_data, "country_name"$|"Country_2"$|"country");
 // Saved the data
 saved(reg_2_data, fpath $+ "reg_2_data.gdat");
 saved(reg_2_data, fpath $+ "reg_2_data.xlsx");
+
+
