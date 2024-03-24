@@ -1,0 +1,102 @@
+/****************************************************************
+** Data loading information
+****************************************************************/
+// Data loading path
+fpath = "data/";
+
+// Filename
+fname = "reg_data.gdat";
+
+// Results saving paths
+save_on = 1;
+spath = "data/";
+sfile1 = "cab_pct_annual.gdat";
+
+// Load data
+reg_data = loadd(fpath$+fname);
+
+// Generate Year variable
+reg_data = selif(reg_data, reg_data[., "pct_ca_reg"] .!= miss());
+Year = dtYear(reg_data[., "date2"]);
+Year = asDate(Year, "%Y");
+
+// Merge with existing reg data
+reg_data = Year~reg_data;
+reg_data = dfname(move(reg_data), "Year", "X1");
+
+
+/****************************************************************
+** Aggregating annually
+****************************************************************/
+// Get unique years
+Year_uniq = unique(reg_data[., "Year"]);
+
+// Get unique country codes
+ccodes = unique(reg_data[., "cn"]);
+
+// Get column labels
+{ cnames, keys } = getColLabels(reg_data, "Country");
+N_groups = rows(cnames);
+
+// Storage matrix
+cab_wide = Year_uniq;
+
+for i(1, N_groups, 1);
+    
+    // Select data for country
+    tmp = __get_test_y_with_year(reg_data, cnames[i]);
+    
+    // Now aggregate 
+    tmp = aggregate(tmp, "mean", "Year", 1);
+    
+    // Convert to DF
+    tmp = dfname(move(tmp), "cab_"$+cnames[i], "pct_ca_reg");
+ 
+    // Now merge with storage matrix
+    cab_wide = outerJoin(cab_wide, "Year", tmp, "Year", "full");
+    
+endfor;
+
+// Reshape to long data
+columns = trimr(getColNames(cab_wide), 1, 0);
+
+// Declare 'pctl' to be a pivotControl structure
+// and fill with default settings
+struct pivotControl pctl;
+pctl = pivotControlCreate();
+
+// Split the variable names from 'columns', 
+// every time an underscore is encountered
+pctl.names_prefix = "cab_";
+
+// Set to drop missings
+pctl.values_drop_missing = 1;
+
+// Set variable names for the new columns
+names_to = "Country";
+
+// Set name of value column
+values_to = "Pct CAB";
+
+cab_long = dfLonger(cab_wide, columns, names_to, values_to, pctl);
+
+// Sort data
+cab_long = sortc(cab_long, "Country"$|"Year");
+if save_on;
+    saved(cab_long, spath$+sfile1);
+endif;
+
+proc (1) = __get_test_y_with_year(data, cname);
+    local e, tmp_data, y_test;
+    
+    // Select data for country
+    e = data[., "Country"] .== cname;
+    
+    // Get test data
+    tmp_data = selif(data[., "Year" "pct_ca_reg"], e);
+    
+    // Get CAB for country
+    y_test = packr(tmp_data[., "Year" "pct_ca_reg"]);
+    
+    retp(y_test);
+endp;
