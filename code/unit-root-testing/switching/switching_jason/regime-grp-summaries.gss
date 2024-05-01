@@ -1,0 +1,114 @@
+// Load coefficient data
+data_path1 = "code/unit-root-testing/switching/switching_jason/";
+data_path2 = "data/";
+
+fname1 = "coeffs.gdat";
+fname2 = "reg_2_data.gdat";
+
+// Coefficient Data
+coeffs = loadd(data_path1 $+ fname1);
+
+// Reg_2_data 
+reg_2_data = loadd(data_path2 $+ fname2);
+
+// Define groups
+string case_one_grp = { "Austria",
+"Bolivia",
+"Canada",
+"Czech Republic",
+"Denmark",
+"France",
+"Germany",
+"Hungary",
+"Indonesia",
+"Japan",
+"Peru",
+"Philippines",
+"Russia",
+"South Africa",
+"Spain",
+"Sweden",
+"Thailand",
+"United Kingdom",
+"Uruguay",
+"Vietnam" };
+
+ string case_two_grp = { "Argentina",
+"Australia",
+"Belgium",
+"Colombia",
+"Costa Rica",
+"El Salvador",
+"Georgia",
+"Guatemala",
+"Kazakhstan",
+"Kyrgyz Republic",
+"Luxembourg",
+"New Zealand",
+"Sri Lanka",
+"Switzerland"};
+
+string case_three_grp = {
+"Bulgaria",
+"Mauritius",
+"Portugal",
+"Chile",
+"Croatia",
+"Estonia" };
+
+string case_four_grp = {
+"Cambodia",
+"Slovenia",
+"Malaysia" };
+
+string case_five_grp = {
+"Belarus",
+"Brazil",
+"China",
+"Finland",
+"India",
+"Ireland",
+"Mexico",
+"Netherlands",
+"Paraguay",
+"Poland",
+"Venezuela",
+"Armenia",
+"Greece",
+"Hong Kong",
+"Iceland" };
+
+// Variable indices
+ind = {1 2 9 15 10 16};
+
+/*
+** Extract Coeffiecients
+*/
+// Group one
+case_one_coeffs = coeffs[ind, case_one_grp];
+saved(case_one_coeffs, "case_one_coeffs.csv");
+
+case_two_coeffs = coeffs[ind, case_two_grp];
+saved(case_two_coeffs, "case_two_coeffs.csv");
+
+case_three_coeffs = coeffs[ind, case_three_grp];
+saved(case_three_coeffs, "case_three_coeffs.csv");
+
+case_four_coeffs = coeffs[ind, case_four_grp];
+saved(case_four_coeffs, "case_four_coeffs.csv");
+
+case_five_coeffs = coeffs[ind, case_five_grp];
+saved(case_five_coeffs, "case_five_coeffs.csv");
+
+/*
+** Get Means
+*/
+means_coeff = meanc(case_one_coeffs')~meanc(case_two_coeffs')~meanc(case_three_coeffs')~meanc(case_four_coeffs')~meanc(case_five_coeffs');
+means_df = asDF(means_coeff, "Case One", "Case Two", "Case Three", "Case Four", "Case Five");
+
+// Add Labels
+string var_labels = { "alpha_0", "alpha_1", "sig_0", "sig_1", "phi_0", "phi_1" };
+means_df = asDF(var_labels, "Parameter")~means_df;
+saved(means_df, "mean_coeff.csv");
+
+

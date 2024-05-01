@@ -1,0 +1,55 @@
+/**
+** Checks for global stationarity using the requirement
+** specified in Francq and Zakoïan, 2001
+** p(0,0)phi(0)^2 + p(1,1)phi(1)^2+[1- p(0,0) -p(1,1)]phi(0)^2phi(1)^2 <= 1;
+** p(0,0)phi(0) + p(1,1)phi(1) < 2:
+*/
+
+new;
+cls;
+
+#include code/cab_util.src
+
+// Data loading path
+fpath = "code/unit-root-testing/switching/switching_jason/";
+spath = "results/unit-root-tests/switch/";
+
+// Coefficient estimates
+fname_cab = "coeffs.gdat";
+sname = "global_test.csv";
+
+coeff = loadd(fpath $+ fname_cab);
+
+// Get country names
+country = getColNames(coeff);
+N_groups = rows(country);
+
+/*
+** Load the coefficient vector
+** phi0 = x[13, i]
+** phi1 = x[16, i]
+** p00 =  x[8, i]
+** p11 =  x[7, i]
+*/
+cond_1 = asDF(zeros(N_groups, 1), "Condition One");
+cond_2 = asDF(zeros(N_groups, 1), "Condition Two");
+
+for i(1, N_groups, 1);
+    cond_1[i] = coeff[8, i]*(1 + coeff[13, i])^2 + coeff[7, i]*(1 + coeff[16, i])^2 + (1 - coeff[8, i] - coeff[7, i])*((1 + coeff[16, i])^2*(1 + coeff[13, i])^2);
+    cond_2[i] = coeff[8, i]*(1 + coeff[13, i])^2 + coeff[7, i]*(1 + coeff[16, i])^2;
+endfor;
+
+global_cond = asDF(country, "Country")~cond_1~cond_2;
+global_stationary = (global_cond[., "Condition One"] .<= 1 .and global_cond[., "Condition Two"] .< 2);
+global_cond = global_cond~asDF(global_stationary, "Global Stationarity");
+global_cond = dftype(move(global_cond), META_TYPE_CATEGORY, "Global Stationarity");
+global_cond = setcollabels(move(global_cond), "Not Stationary"$|"Global Stationary", seqa(0, 1, 2), "Global Stationarity");
+
+saved(global_cond, spath $+ sname);
+
+plotCanvasSize("px", 800|600);
+
+plotFreq(global_cond, "Global Stationarity", 0, 1);
+plotAddFreqLabels(global_cond, "Global Stationarity", 0, 1);
+
+

@@ -1,0 +1,148 @@
+/*
+** Replication log
+*/
+
+/*
+** Data compilations notes
+*/
+
+/*
+** Data exploration and summary statistics
+*/
+1. run create_reg_data.gss to create regression dataset and perform preliminary descriptive statistics. 
+   - Input data: Quarterly percent CAB/GDP and country identifiers stored in comparison.csv (used pct_ca_reg variable)
+   - Results data file: Quarterly CAB/GDP used in for part I, reg_data.gdat
+   - Results table file: Table of summary statistics by country, appendix1-summary-stats.txt
+2. run data-stats-split-data.gss to compute pre-covid and post-covid summary statistics
+   - Input data: Quarterly percent CAB/GDP and country identifiers, reg_data.gdat
+   - Results table file:    precovid-summary-stats.csv and  postcovid-summary-stats.csv
+3. run data-cross-section-averages.gss to create graph of Abs. mean CAB 
+   and Within Period CAB Variance all countries
+   - Input data: Quarterly percent reg_data_group_dummy.dta
+   - Result file: None
+   - Creates a graph of the Absolute Mean Value of Current Account (%GDP) and Within Period Current Account (%GDP) Variance
+4. run data-csa-split-data.gss to create graph of Abs. mean CAB 
+   and Within Period CAB Variance by country groups
+   - Input data: reg_data_group_dummy_ez_euro_start.dta, reg_data_group_dummy_euro.dta
+   - Result data file: None
+   - Results graph: fig1-cab-csa-by-year.png
+
+
+/*
+** AR-Estimation
+** This section computes rolling AR estimations       
+**        
+*/
+1. run rolling-ar-estimations.gss to run pooled AR rolling estimations 
+   - Input data: reg_data.gdat 
+   - Results file: NONE
+   - Results graphs: fig3-cab-persistence.png, Absolute Mean Current Account (%GDP) and Within period standard deviation of CAB
+                     fig4-cab-persistence2.png, Mean AR(1) estimates vs. Within period standard deviation of AR(1) estimates
+2. run rolling-ar-estimations-by-group.gss to run pooled AR rolling estimations 
+   - Input data: reg_data_group_dummy_euro.dta or reg_data_group_dummy_ez_euro_start.dta
+   - Results file: NONE
+   - Results graphs: fig5-cab-persistence-grps.png, Absolute Mean Current Account (%GDP) and Within period standard deviation of CAB by country groups
+
+/*
+** Standard Unit Root Testing
+** This section computes the following unit root and stationarity tests
+**          ADF testing
+**          DFGLS testing
+**          KPSS stationarity testing
+**          PP testing 
+**          LM testing
+**
+*/
+
+1. run standard-unit-root-testing.gss to compute tests for the full dataset
+   - Input data: Quarterly percent CAB/GDP stored in reg_data.gdat
+   - Results table file: appendix3-unit-root.txt
+   - Results plot file: unit-root-results.png, stationarity-tst.png
+2. run standard-unit-root-testing-pre-covid.gss to compute tests for pre-covid timespan.
+   - Input data: Quarterly percent CAB/GDP stored in reg_data.gdat
+   - Results table file: appendix3-pre-covid-unit-root.txt
+   - Results plot file: pre-covid-unit-root-results.png, pre-covid-stationarity-tests.png
+
+/*
+** Unit Root Testing with Breaks
+** This section computes the following unit root and stationarity tests allowing for 1 break
+**          ADF with 1 Break 
+**          DFGLS with 1 Break 
+**          KPSS with 1 Break 
+**          PP with 1 Break 
+**          LM with 1 Break 
+**
+** It also computes the following unit root tests allowing for the number of 
+** breaks to be data determined (up to 5 breaks):
+**
+**          ADF with m breaks 
+**          PP with m breaks
+*/
+1. run breaks-unit-root-testing-pre-covid.gss to compute tests with 1 break for pre-covid timespan
+   - Input data: Quarterly percent CAB/GDP stored in reg_data.gdat
+   - Results table file: appendix3-pre-covid-break-unit-root.txt
+   - Results plot file: pre-covid-break-unit-root-results.png, pre-covid-break-stationarity-tests.png
+2. run mbreaks-unit-root-testing-pre-covid.gss to compute tests with m breaks for pre-covid timespan
+   - Input data: Quarterly percent CAB/GDP stored in reg_data.gdat
+   - Results table file: breaks-pre-covid-unit-root.txt
+   - Results plot file: breaks-unit-root-results.png
+
+/*
+** Markov-Switching Unit Root Tests
+**
+*/
+1. run bubble_cab_ec.gss to estimate the MS model 
+   - Input data: reg_data.gdat
+   - Required #include files: litter8snew.gss and litter8sNewt
+   - Results files: 
+         >> coeffs.gdat -> Coefficient file, see lines 145 to 185 for order of variables.
+         >> probs.fmt --> The time-varying probabilities, 3 columns, P_S3 corresponds to the persistence 
+         >> se.gdat --> The standard error of the coefficients estimates
+         >> tstats.gdat --> The t-stats of the estimated coefficients. 
+   - Results plots one plot for each country:   
+         >> Panel One: CAB time-series
+         >> Panel Two: P_{S_3}
+2. run p_val_bootstrap.gss to bootstrap p-values for each country
+   - Input data: 
+         >> reg_data.gdat
+         >> coeffs.gdat -> Coefficient file, see lines 145 to 185 for order of variables.
+         >> probs.fmt --> The time-varying probabilities, 3 columns, P_S3 corresponds to the persistence 
+         >> se.gdat --> The standard error of the coefficients estimates
+         >> tstats.gdat --> The t-stats of the estimated coefficients. 
+    
+   - Required #include files: litter8snew_ec.gss and litter8sNewt_ec.gss
+   - Results files: 
+         >> Pboot0Expl.csv --> Regime zero pvalues 
+         >> Pboot1Expl.csv --> Regime one pvalues 
+   - Note: We ran 100 replications for each country. The program takes a long time. 
+           Make sure the covariance computation method is the same as when doing 
+           estimations         
+3. run check-global-stationarity.gss to check global stationarity conditions
+   - Input data: 
+         >> coeffs.gdat -> Coefficient file, see lines 145 to 185 for order of variables.
+   - Required #include files: cab_util.src
+   - Results files: 
+         >> global_test.csv
+  
+/*
+** Part II Data Prep
+**
+*/
+1. run prep-regime-data.gss to summarize the regime switching results and aggregate regimes to annual data. 
+   If two or more quarters in a year fall into a regime, the entire year is assigned to a regime. 
+   - Input data: 
+         >> ms-estimates.csv
+         >> reg_data.gdat
+         >> probs.fmt 
+   - Required #include files: cab_util.src
+   - Results files: 
+         >> regimes_summary.gdat
+2. run part-ii-data-prep.gss to merge regime summary data with the annual macro data and 
+   the financial crisis data. Must merge on cn first because of missing ccodes.
+   - Input data: 
+         >> regimes_summary.gdat
+         >> cis_annual_data12262022.dta
+         >> fin_crisis.xlsx 
+   - Required #include files: cab_util.src
+   - Results files: 
+         >> reg_2_data.gdat    

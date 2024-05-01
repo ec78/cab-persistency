@@ -22,6 +22,9 @@ sfile3b = "regime-type-currency-groups-split.png";
 sfile4 = "regime-type-kaopen.png";
 sfile5 = "regime-type-commd.png";
 sfile6 = "regime-type-commd2.png";
+sfile7 = "nfa_quant.png";
+sfile7a = "idc_nfa_quant.png";
+sfile7b = "ldc_nfa_quant.png";
 
 // Load data
 reg_2_data = loadd(fpath $+ fname);
@@ -29,14 +32,45 @@ cab_pct = loadd(fpath $+ fname2);
 
 // Merge the data
 reg_2_data = outerJoin(cab_pct, "Year"$|"Country", reg_2_data, "Year"$|"Country");
+reg_2_data = asDate(reg_2_data, "%Y", "Year");
 
+// Fill missing variables for all country groups
+// Iterate over countries
+// Set up asian and developing country indicator
+adc = (reg_2_data[., "ldc"] .== 1 .and reg_2_data[., "eap"] .== 1);
+reg_2_data = reg_2_data~asDF(adc, "adc");
+
+/*
+** Impute Country Group Variables
+*/
+string country_grps = { "idc", "ldc", "emg", "lac", "adc", "euro" };
+reg_2_data = pdImpute(reg_2_data, country_grps, "Country", "bfill");
+reg_2_data = pdImpute(reg_2_data, country_grps, "Country", "ffill");
+
+/*
+** Impute currency and other variables
+*/
+reg_2_data = pdImpute(reg_2_data, "currency_unit", "Country", "ffill");
+reg_2_data = pdImpute(reg_2_data, "currency_unit", "Country", "bfill");
+
+/*
+** Check counts for variables of interest by country
+*/
+string var_interest = { "ka_open", "kaopen","fixed", "flexible", "nfa", "commd", "commd_i", "comd_d", "gsur", "gsur_18" };
+miss_table = pdCountMissings(reg_2_data, var_interest, "Country");
+saved(miss_table, spath $+ "missing_report.csv");
+
+/*
+** Get time spans
+*/
+tspan_vars = pdTimeSpans(reg_2_data, "Year", "Country", var_interest);
+saved(tspan_vars, spath $+ "time_span_vars.csv");
+end;
 
 /****************************************************************
 ** Total sample
 ** Basic summary statistics
 ****************************************************************/
-dstatmt(reg_2_data);
-
 // Regime type frequency
 plotCanvasSize("px", 600|400);
 
@@ -51,12 +85,6 @@ endif;
 /****************************************************************
 ** Regime frequency by country group
 ****************************************************************/
-// Set up asian and developing country indicator
-adc = (reg_2_data[., "ldc"] .== 1 .and reg_2_data[., "eap"] .== 1);
-reg_2_data = reg_2_data~asDF(adc, "adc");
-
-// Iterate over countries
-string country_grps = { "idc", "ldc", "emg", "lac", "adc", "euro" };
 
 string gr_title = {"Industrialized Countries", "Developing Countries", "Emerging Countries",
     "Latin American Countries", "Developing Asian Countries", "Euro Countries" };
@@ -72,7 +100,6 @@ plotCanvasSize("fill");
 plotOpenWindow();
 for i(1, rows(country_grps), 1);
     tst_data = selif(reg_2_data, reg_2_data[., country_grps[i]] .== 1);
-  
     
     /*
     ** Frequency plot of regime type
@@ -87,13 +114,13 @@ for i(1, rows(country_grps), 1);
     // Draw histogram with default settings
     plotFreq(myPlt, tst_data, "Regime Type", 0, 1);
     plotAddFreqLabels(tst_data, "Regime Type", 0, 1);
-
+    
 endfor;
 
 if save_on;
     plotSave(spath $+ sfile2, 11|8.5, "in");
 endif;
-    
+
 /****************************************************************
 ** Regime frequency by year
 ***************************************************************/
@@ -340,7 +367,7 @@ neg_cab_grp_idc = selif(reg_2_data, reg_2_data[., "Pct CAB"] .< 0 .and reg_2_dat
 neg_cab_grp_ldc = selif(reg_2_data, reg_2_data[., "Pct CAB"] .< 0 .and reg_2_data[., "ldc"] .==1);
 
 /*
-** IDC 
+** IDC
 */
 // Get  country count by year
 year_idc = dtYear(neg_cab_grp_idc[., "Year"]);
@@ -373,7 +400,7 @@ neg_prct_counts_idc = setColNames(neg_prct_counts_idc, "Pct. Stationary"$|"Pct. 
 neg_regime_counts_idc = neg_regime_counts_idc[., "Year"]~neg_prct_counts_idc;
 
 /*
-** LDC 
+** LDC
 */
 // Get  country count by year
 year_ldc = dtYear(neg_cab_grp_ldc[., "Year"]);
@@ -490,7 +517,7 @@ plotOpenWindow();
 for i(1, 2, 1);
     
     tst_data = selif(reg_2_data, reg_2_data[., var_list[i]] .== 1);
-  
+    
     
     /*
     ** Frequency plot of regime type
@@ -532,22 +559,22 @@ idx = 1;
 plotOpenWindow();
 for i(1, 2, 1);
     for j(1, 2, 1);
-    tst_data = selif(reg_2_data, reg_2_data[., var_list[i]] .== 1 .and reg_2_data[., var_list2[j]] .== 1);
-  
-    
-    /*
-    ** Frequency plot of regime type
-    */
-    // Set title
-    plotSetTitle(&myPlt, gr_title2[j] $+ " with " $+ gr_title[i]);
-    plotSetYRange(&myPlt, 0, 100);
-    
-    plotLayout(2, 2, idx);
-    
-    // Frequency plot
-    // Draw histogram with default settings
-    plotFreq(myPlt, tst_data, "Regime Type", 0, 1);
-    plotAddFreqLabels(tst_data, "Regime Type", 0, 1);
+        tst_data = selif(reg_2_data, reg_2_data[., var_list[i]] .== 1 .and reg_2_data[., var_list2[j]] .== 1);
+        
+        
+        /*
+        ** Frequency plot of regime type
+        */
+        // Set title
+        plotSetTitle(&myPlt, gr_title2[j] $+ " with " $+ gr_title[i]);
+        plotSetYRange(&myPlt, 0, 100);
+        
+        plotLayout(2, 2, idx);
+        
+        // Frequency plot
+        // Draw histogram with default settings
+        plotFreq(myPlt, tst_data, "Regime Type", 0, 1);
+        plotAddFreqLabels(tst_data, "Regime Type", 0, 1);
         idx = idx + 1;
     endfor;
 endfor;
@@ -555,6 +582,7 @@ endfor;
 if save_on;
     plotSave(spath $+ sfile3b, 11|8.5, "in");
 endif;
+
 /****************************************************************
 ** Regime frequency by ka_open quantile
 ****************************************************************/
@@ -575,13 +603,13 @@ plotOpenWindow();
 for i(1, 4, 1);
     
     tst_data = selif(reg_2_data, reg_2_data[., "Financial Openness"] .== cat_list[i]);
-  
+    
     
     /*
     ** Frequency plot of regime type
     */
     // Set title
-    plotSetTitle(&myPlt, gr_title[i]);
+    plotSetTitle(&myPlt, gr_title[i] $+ " Financial Openness");
     plotSetYRange(&myPlt, 0, 100);
     
     plotLayout(2, 2, i);
@@ -602,7 +630,7 @@ endif;
 // Iterate over countries
 string cat_list = { "First Quantile", "Second Quantile", "Third Quantile", "Fourth Quantile"};
 
-string gr_title = { "First Quantile", "Second Quantile", "Third Quantile", "Fourth Quantile"};
+string gr_title = { "First Quantile commd", "Second Quantile commd", "Third Quantile commd", "Fourth Quantile commd"};
 
 // Get Break Points
 { labels, keys } = getColLabels(reg_2_data, "Regime Type");
@@ -616,7 +644,7 @@ plotOpenWindow();
 for i(1, 4, 1);
     
     tst_data = selif(reg_2_data, reg_2_data[., "Commodity Exporter"] .== cat_list[i]);
-  
+    
     
     /*
     ** Frequency plot of regime type
@@ -651,7 +679,7 @@ plotOpenWindow();
 for i(0, 1, 1);
     
     tst_data = selif(reg_2_data, reg_2_data[., "comd_d"] .== i);
-  
+    
     
     /*
     ** Frequency plot of regime type
@@ -673,3 +701,249 @@ endfor;
 if save_on;
     plotSave(spath $+ sfile6, 11|8.5, "in");
 endif;
+
+/****************************************************************
+** Regime frequency by NFA quantile exporter
+****************************************************************/
+// Iterate over countries
+string cat_list = { "First Quantile", "Second Quantile", "Third Quantile", "Fourth Quantile"};
+
+string gr_title = { "First Quantile NFA", "Second Quantile NFA", "Third Quantile NFA", "Fourth Quantile NFA"};
+
+// Get Break Points
+{ labels, keys } = getColLabels(reg_2_data, "Regime Type");
+
+// Declare plotControl structure
+struct plotControl myPlt;
+myPlt = plotGetDefaults("bar");
+
+
+plotOpenWindow();
+for i(1, 4, 1);
+    
+    tst_data = selif(reg_2_data, reg_2_data[., "NFA Quantile"] .== cat_list[i]);
+    
+    
+    /*
+    ** Frequency plot of regime type
+    */
+    // Set title
+    plotSetTitle(&myPlt, gr_title[i]);
+    plotSetYRange(&myPlt, 0, 100);
+    
+    plotLayout(2, 2, i);
+    
+    // Frequency plot
+    // Draw histogram with default settings
+    plotFreq(myPlt, tst_data, "Regime Type", 0, 1);
+    plotAddFreqLabels(tst_data, "Regime Type", 0, 1);
+endfor;
+
+if save_on;
+    plotSave(spath $+ sfile7, 11|8.5, "in");
+endif;
+
+/****************************************************************
+** Regime frequency by NFA quantile exporter Industrialized
+****************************************************************/
+// Iterate over countries
+string gr_list = { "First Quantile NFA", "Second Quantile NFA", "Third Quantile NFA", "Fourth Quantile NFA"};
+
+string cat_title = { "First Quantile", "Second Quantile", "Third Quantile", "Fourth Quantile"};
+
+// Get Break Points
+{ labels, keys } = getColLabels(reg_2_data, "Regime Type");
+
+// Declare plotControl structure
+struct plotControl myPlt;
+myPlt = plotGetDefaults("bar");
+
+
+plotOpenWindow();
+for i(1, 4, 1);
+    
+    tst_data = selif(reg_2_data, reg_2_data[., "NFA Quantile"] .== cat_list[i] .and reg_2_data[., "idc"] .==1);
+    
+    
+    /*
+    ** Frequency plot of regime type
+    */
+    // Set title
+    plotSetTitle(&myPlt, "Industrialized countries " $+ gr_title[i]);
+    plotSetYRange(&myPlt, 0, 100);
+    
+    plotLayout(2, 2, i);
+    
+    // Frequency plot
+    // Draw histogram with default settings
+    plotFreq(myPlt, tst_data, "Regime Type", 0, 1);
+    plotAddFreqLabels(tst_data, "Regime Type", 0, 1);
+endfor;
+
+if save_on;
+    plotSave(spath $+ sfile7a, 11|8.5, "in");
+endif;
+
+/****************************************************************
+** Regime frequency by NFA quantile exporter Developing
+****************************************************************/
+// Iterate over countries
+string gr_list = { "First Quantile NFA", "Second Quantile NFA", "Third Quantile NFA", "Fourth Quantile NFA"};
+
+string cat_title = { "First Quantile", "Second Quantile", "Third Quantile", "Fourth Quantile"};
+
+// Get Break Points
+{ labels, keys } = getColLabels(reg_2_data, "Regime Type");
+
+// Declare plotControl structure
+struct plotControl myPlt;
+myPlt = plotGetDefaults("bar");
+
+
+plotOpenWindow();
+for i(1, 4, 1);
+    
+    tst_data = selif(reg_2_data, reg_2_data[., "NFA Quantile"] .== cat_list[i] .and reg_2_data[., "ldc"] .==1);
+    
+    
+    /*
+    ** Frequency plot of regime type
+    */
+    // Set title
+    plotSetTitle(&myPlt, "Developing countries " $+ gr_title[i]);
+    plotSetYRange(&myPlt, 0, 100);
+    
+    plotLayout(2, 2, i);
+    
+    // Frequency plot
+    // Draw histogram with default settings
+    plotFreq(myPlt, tst_data, "Regime Type", 0, 1);
+    plotAddFreqLabels(tst_data, "Regime Type", 0, 1);
+endfor;
+
+if save_on;
+    plotSave(spath $+ sfile7b, 11|8.5, "in");
+endif;
+
+proc (1) = pdImpute(data, varlist, groupvar, method);
+    local grp_names, keys, N_groups, N_vars, tmp_data, st_indx, end_indx;
+    
+    // Count number of variables in list
+    N_vars = rows(varlist);
+    
+    // Get column labels
+    { grp_names, keys } = getColLabels(data, groupvar);
+    N_groups = rows(grp_names);
+    
+    // Get indices
+    st_indx = indnv(grp_names, reg_2_data[., groupvar], 1);
+    end_indx = (st_indx[2:rows(st_indx)]-1)|rows(data);
+    
+    // Loop over groups
+    for i(1, N_groups, 1);
+        if not st_indx[i] == miss();
+            for j(1, N_Vars, 1);
+                data[st_indx[i]:end_indx[i], varlist[j]] = impute(data[st_indx[i]:end_indx[i], varlist[j]], method);
+            endfor;
+        endif;
+    endfor;
+    
+    retp(data);
+endp;
+
+proc (1) = pdCountMissings(data, varlist, groupvar);
+    local grp_names, keys, N_groups, N_vars, missings_mat, st_indx, end_indx, missing_df;
+    
+    // Count number of variables in list
+    N_vars = rows(varlist);
+    
+    // Get column labels
+    { grp_names, keys } = getColLabels(data, groupvar);
+    N_groups = rows(grp_names);
+    
+    // Get indices
+    st_indx = indnv(grp_names, reg_2_data[., groupvar], 1);
+    end_indx = (st_indx[2:rows(st_indx)]-1)|rows(data);
+    
+    // Create storage matrix
+    missings_mat = zeros(N_groups, N_vars);
+    
+    // Loop over groups
+    for i(1, N_groups, 1);
+        if not st_indx == miss();
+            for j(1, N_Vars, 1);
+                missings_mat[i, j] = counts(data[st_indx[i]:end_indx[i], varlist[j]], miss());
+            endfor;
+        endif;
+    endfor;
+    
+    // Create results DF
+    missing_df = asDF(missings_mat);
+    missing_df = asDF(grp_names, "Country")~setColNames(missing_df, varlist);
+    
+    retp(missing_df);
+endp;
+
+proc (1) = pdTimeSpans(data, datevar, groupvar, ...);
+    local grp_names, keys, N_groups, varlist, date_fmt, dates_mat, dates_df, st_indx, end_indx;
+    
+    // Check for varlist
+    varlist = dynargsGet(1,"");
+    
+    if not isempty(varlist);
+        retp(__pdTimeSpans_Vars(data, datevar, groupvar, varlist));
+    else;
+        // Get column labels
+        { grp_names, keys } = getColLabels(data, groupvar);
+        N_groups = rows(grp_names);
+        
+        // Get date format
+        date_fmt = getcoldateformats(data, datevar);
+        
+        // Get indices
+        st_indx = indnv(grp_names, data[., groupvar], 1);
+        end_indx = (st_indx[2:rows(st_indx)]-1)|rows(data);
+        
+        // Loop over groups
+        dates_mat = aggregate(data[., groupvar datevar], "min", groupvar);
+        dates_mat = outerJoin(dates_mat, groupvar, aggregate(data[., groupvar datevar], "max", groupvar), groupvar);
+        
+        retp(setColNames(dates_mat, groupvar$|"Start Date"$|"End Date"));
+    endif;
+    
+endp;
+
+proc (1) = __pdTimeSpans_Vars(data, datevar, groupvar, varlist);
+    local N_groups, grp_names, keys, date_fmt, N_vars, st_indx, end_indx, dates_mat,
+    tmp_max, tmp_data, tmp_min;
+    
+    // Get column labels
+    { grp_names, keys } = getColLabels(data, groupvar);
+    N_groups = rows(grp_names);
+    
+    // Get date format
+    date_fmt = getcoldateformats(data, datevar);
+    
+    // Get number of variables
+    N_vars = rows(varlist);
+    
+    // Get indices
+    st_indx = indnv(grp_names, data[., groupvar], 1);
+    end_indx = (st_indx[2:rows(st_indx)]-1)|rows(data);
+    
+    // Create initial dates_mat
+    dates_mat = aggregate(data[., groupvar datevar], "min", groupvar);
+    dates_mat = outerJoin(dates_mat, groupvar, aggregate(data[., groupvar datevar], "max", groupvar), groupvar);
+    
+    // Loop over groups
+    for i(1, N_vars, 1);
+        tmp_data = delcols(packr(data[., groupvar datevar varlist[i]]), 3);
+        tmp_min = setColNames(aggregate(tmp_data, "min", groupvar), groupvar$|(varlist[i]$+" Start"));
+        tmp_max = setColNames(aggregate(tmp_data, "max", groupvar), groupvar$|(varlist[i]$+" End"));
+        dates_mat = outerJoin(dates_mat, groupvar, tmp_min);
+        dates_mat = outerJoin(dates_mat, groupvar, tmp_max);
+    endfor;
+    
+    retp(dates_mat);
+    
+endp;

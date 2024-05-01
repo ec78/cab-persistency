@@ -225,8 +225,8 @@ for i(17, N_groups, 1);
 
     endo;
     
-    xx = selif(xxx, sss[.,1] .gt 0);
-    ss = selif(sss, sss[.,1] .gt 0);
+    xx = selif(xxx, sss[., 1] .gt 0);
+    ss = selif(sss, sss[., 1] .gt 0);
     
     // Load t-stats for specific country
     Ttestphi0 = tstats[10, i];

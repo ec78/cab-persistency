@@ -147,7 +147,7 @@ str_stats_Za = addAsterisksToStats(Za_pp, cvZa_pp, 1);
 str_stats_LM = addAsterisksToStats(tstat_LM, cv_LM, 1);
 
 // Print the UR table
-table_name = spath $+ "appendix3-pre-covid-unit-root.txt";
+table_name = spath $+ "appendix3-post-covid-unit-root.txt";
 output file=^table_name on;
 fmt = "%15s";
 s = "Country"$~"ADF"$~"DFGLS"$~"ZT_PP"$~"Za_PP"$~"LM"$~"KPSS"$~"N"$~"Start Date"$~"End Date";
@@ -197,7 +197,7 @@ plotSetTitle(&ctl, "LM Test Results (%)");
 plotFreq(ctl, reject_LM, 1);
 
 if save_on;
-    plotSave(spath $+ "pre-covid-unit-root-results.png", 11 | 8.5, "in");
+    plotSave(spath $+ "post-covid-unit-root-results.png", 11 | 8.5, "in");
 endif;
 
 struct plotControl ctl2;
@@ -209,7 +209,7 @@ plotSetTitle(&ctl, "KPSS Test Results (%)");
 plotFreq(ctl, reject_kpss, 1);
 
 if save_on;
-    plotSave(spath $+ "pre-covid-stationarity-tests.png", 11 | 8.5, "in");
+    plotSave(spath $+ "post-covid-stationarity-tests.png", 11 | 8.5, "in");
 endif;
 
 proc (1) = reclassifyRejectionRates(reject_vector);

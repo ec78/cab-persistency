@@ -20,10 +20,12 @@ cis_annual = loadd(fpath $+ fname_cis_annual);
 fin_crisis = loadd(fpath $+ fname_fin_crisis, ". + date($year, '%Y')"); 
 
 // Merge data
-reg_2_data = outerJoin(regimes, "ccode"$|"Year", cis_annual, "ccode"$|"year");
+//reg_2_data = outerJoin(regimes, "ccode"$|"Year", cis_annual, "ccode"$|"year");
+reg_2_data = outerJoin(regimes, "cn"$|"Year", cis_annual, "cn"$|"year");
 reg_2_data[., "Year"] = asdate(reg_2_data[., "Year"], "%Y");
 reg_2_data = dftype(move(reg_2_data), META_TYPE_CATEGORY, "cn");
 
+// Set missing country codes
 reg_2_data = outerJoin(reg_2_data, "ccode"$|"Year", fin_crisis, "ccode"$|"year");
 reg_2_data = sortmc(reg_2_data, "Country"$|"Year");
 reg_2_date = delcols(reg_2_data, "country_name"$|"Country_2"$|"country");

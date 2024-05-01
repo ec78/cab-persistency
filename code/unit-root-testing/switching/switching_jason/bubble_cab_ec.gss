@@ -72,8 +72,8 @@ for i(1, N_groups, 1);
     
     // Starting values
     x0 = 0.01|0.01|3|3|3|3|3|3|stdc(dya)|0.01|zeros(4, 1)|7*stdc(dya)|0.01|zeros(4, 1);
-    
-    // IncludeD
+
+    // Include
     kc = 1;
     
     // Include proc files

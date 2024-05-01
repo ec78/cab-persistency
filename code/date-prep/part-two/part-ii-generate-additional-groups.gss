@@ -66,5 +66,20 @@ curr_regime = dftype(move(curr_regime), META_TYPE_CATEGORY);
 curr_regime = setcollabels(move(curr_regime), "First Quantile"$|"Second Quantile"$|"Third Quantile"$|"Fourth Quantile"$|"Missing", seqa(0, 1, 5), "ERS Quantile");
 
 reg_2_data = reg_2_data~curr_regime~financial_openness~commodity_exporter;
-saved(reg_2_data, fpath $+ "reg_2_data.gdat");
+//saved(reg_2_data, fpath $+ "reg_2_data.gdat");
 
+/******************************************************
+** NFA
+******************************************************/
+e = {0.25, 0.5, 0.75, 1};
+
+// Get quantiles
+tmp = quantile(reg_2_data[., "nfa"], e);
+
+// Reclassify
+nfa_quant = asDF(reclassifyCuts(reg_2_data[., "nfa"], tmp|miss()), "NFA Quantile");
+nfa_quant = dftype(move(nfa_quant), META_TYPE_CATEGORY);
+nfa_quant = setcollabels(move(nfa_quant), "First Quantile"$|"Second Quantile"$|"Third Quantile"$|"Fourth Quantile"$|"Missing", seqa(0, 1, 5), "NFA Quantile");
+
+reg_2_data = reg_2_data~nfa_quant;
+saved(reg_2_data, fpath $+ "reg_2_data.gdat");

@@ -1,0 +1,26 @@
+new;
+cls;
+
+/****************************************************************
+** Data loading information
+****************************************************************/
+// Data loading path
+fpath = "data/";
+
+// Filename
+fname = "reg_2_data.gdat";
+fname2 = "cab_pct_annual.gdat";
+
+
+// Results saving paths
+// Load data
+reg_2_data = loadd(fpath $+ fname);
+cab_pct = loadd(fpath $+ fname2);
+
+// Merge the data
+reg_2_data = outerJoin(cab_pct, "Year"$|"Country", reg_2_data, "Year"$|"Country");
+
+// Test LV_Crisis
+tabulate(reg_2_data, "LV_curcrisis~Regime Type");
+tabulate(reg_2_data, "LV_debtcrisis~Regime Type");
+tabulate(reg_2_data, "LV_debtrest~Regime Type");
