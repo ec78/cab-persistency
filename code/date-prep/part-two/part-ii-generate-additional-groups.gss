@@ -25,7 +25,6 @@ reg_2_data = loadd(fpath $+ fname);
 
 saved(reg_2_data, fpath $+ "reg_2_data.gdat");
 
-end;
 /******************************************************
 ** Commodity exporters
 ******************************************************/

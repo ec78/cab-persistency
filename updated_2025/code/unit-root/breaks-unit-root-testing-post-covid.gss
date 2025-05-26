@@ -1,0 +1,238 @@
+new;
+library tspdlib, tsmt;
+#include code/cab_util.src
+
+/*
+** Load data
+*/
+// Data loading path
+root = "C:/Users/eclow/Documents/GitHub/cab-persistency/";
+fpath = root $+ "updated_2025/clean-data/";
+
+// Data file
+fname = "reg_cab_data.csv";
+
+// Results saving paths
+spath = "results/unit-root-tests/standard/";
+spath2 = "results/unit-root-tests/with-breaks/";
+
+/*
+** Perform import
+*/
+// Perform import
+data = loadd(fpath $+ fname);
+
+/*
+** Specify variable names
+*/
+group_names = "country_name";
+group_var = "cn";
+date_var = "Date";
+interest_var = "pct_cab";
+
+// Change to date column
+data = asdate(move(data), "%Y-Q%q", date_var );
+data = sortmc(data, group_names$|date_var);
+
+// Filter data
+data = selif(data, data[., date_var] .< "2020-03");
+
+// Get unique country codes
+ccodes = unique(data[., group_var]);
+
+// Get column labels
+{ cnames, keys } = getColLabels(data, group_names);
+N = rows(cnames);
+
+// Turn saving on
+save_on = 1;
+
+// Get start and end data
+tmp_data = data[., date_var group_names interest_var];
+
+// Get start and end dates
+start_date = asDF(aggregate(packr(tmp_data[., date_var group_names]), "min", group_names), group_names, "Start Date");
+end_date = asDF(aggregate(packr(tmp_data[., date_var group_names]), "max", group_names), group_names, "End Date");
+
+/*
+** Storage Matrices
+*/
+N_obs = zeros(N, 1);
+
+// Test statistics
+adf_1br = zeros(N,1);
+ADFGLS_1br = adf_1br;
+pt_1br = adf_1br;
+MZa_1br = adf_1br;
+MZt_1br = adf_1br;
+MSB_1br = adf_1br;
+MPT_1br = adf_1br;
+kpss_1br = adf_1br;
+lm_1br = adf_1br;
+
+// Break dates
+tb1_adf = zeros(N,1);
+tb1_gls = tb1_adf;
+tb1_kpss = tb1_adf;
+tb1_lm = tb1_adf;
+
+// Lags
+//lags_adf_1br = zeros(N,1);
+//lags_adf_2br= lags_adf_1br;
+//lags_adfgls_1br = lags_adf;
+
+cv_adf_1br = zeros(N, 3);
+cv_kpss_1br = cv_adf_1br;
+cv_lm_1br = cv_adf_1br;
+cvPT_1br = cv_adf_1br;
+cvMPT_1br = cv_adf_1br;
+cvMZT_1br = cv_adf_1br;
+cvDFGLS_1br = cv_adf_1br;
+cvMSB_1br = cv_adf_1br;
+cvMZa_1br = cv_adf_1br;
+
+// Conclusions
+reject_adf_1br = zeros(N,1);
+reject_DFGLS_1br = zeros(N,1);
+reject_pt_1br = reject_adf_1br;
+reject_MZa_1br = reject_adf_1br;
+reject_MZt_1br = reject_adf_1br;
+reject_MSB_1br = reject_adf_1br;
+reject_MPT_1br = reject_adf_1br;
+reject_kpss_1br = reject_adf_1br;
+reject_lm_1br = reject_adf_1br;
+
+
+screen off;
+
+// Perform single break tests
+model = 1;
+for i(1, N, 1);
+    
+    // Select data for country
+    e = data[., group_names] .== cnames[i];
+    tmp_data = selif(data[., date_var interest_var], e);
+    y_test = packr(tmp_data[., date_var interest_var]);
+    N_obs[i] = rows(y_test);
+    
+    // ADF testing
+    pmax = maxc(minc(floor(N_obs[i]/4)|8)|0);
+    
+    // Zivot Andrews ADF testing
+    { adf_1br[i], tb1_adf[i], lags_adf_1br, cv_tmp } = ADF_1break(y_test, 1, 1, pmax);
+    cv_adf_1br[i, .] = cv_tmp';
+    reject_adf_1br[i] = checkRejection(adf_1br[i], cv_adf_1br[i, .], 0);
+    
+    // GLS 1 Break Testing
+    { ADFGLS_1br[i], p, PT_1br[i], MZa_1br[i], MZt_1br[i], MSB_1br[i], MPT_1br[i], s2,
+        tb1_gls[i], lambda, cvPT, cvMPT, cvMZt, cvDFGLS, cvMSB, cvMZa} = gls_1break(y_test, 1, pmax);
+    // Transpose cv
+    cvPT_1br[i, .] = cvPT';
+    cvMPT_1br[i, .] = cvMPT';
+    cvMZT_1br[i, .] = cvMZT';
+    cvMZa_1br[i, .] = cvMZa';
+    cvDFGLS_1br[i, .] = cvDFGLS';
+    cvMSB_1br[i, .] = cvMSB';
+    
+    reject_DFGLS_1br[i] = checkRejection(ADFGLS_1br[i], cvDFGLS_1br[i, .], 0);
+    reject_PT_1br[i] = checkRejection(PT_1br[i], cvPT_1br[i, .], 0);
+    reject_MZa_1br[i] = checkRejection(MZa_1br[i], cvMZa_1br[i, .], 0);
+    reject_MZt_1br[i] = checkRejection(MZt_1br[i], cvMZt_1br[i, .], 0);
+    reject_MSB_1br[i] = checkRejection(MSB_1br[i], cvMSB_1br[i, .], 0);
+    reject_MPT_1br[i] = checkRejection(MPT_1br[i], cvMPT_1br[i, .], 0);
+    
+    // KPSS 1 Break
+    { kpss_1br[i], tb1_kpss[i], lambda, cvKPSS } = KPSS_1break(y_test, 1);
+    cv_kpss_1br[i, .] = cvKPSS';
+    
+    reject_kpss_1br[i] = checkRejection(kpss_1br[i], cv_kpss_1br[i, .], 1);
+    
+    //LM 1 Break
+    { lm_1br[i], tb1_lm[i], p, lambda, cvLM } = LM_1break(y_test, 1);
+    cv_lm_1br[i, .] = cvLM';
+    
+    reject_lm_1br[i] = checkRejection(lm_1br[i], cv_lm_1br[i, .], 0);
+    
+endfor;
+screen on;
+
+// Add asterisks
+str_stats_adf = addAsterisks(adf_1br, reject_adf_1br);
+str_stats_DFGLS  = addAsterisks(ADFGLS_1br, reject_DFGLS_1br);
+str_stats_MZt = addAsterisks(MZT_1br, reject_MZt_1br);
+str_stats_MZa = addAsterisks(MZa_1br, reject_MZa_1br);
+str_stats_MSB = addAsterisks(MSB_1br, reject_MSB_1br);
+str_stats_MPT = addAsterisks(MPT_1br, reject_MPT_1br);
+str_stats_PT = addAsterisks(PT_1br, reject_PT_1br);
+str_stats_kpss  = addAsterisks(kpss_1br, reject_kpss_1br);
+str_stats_LM = addAsterisks(lm_1br, reject_lm_1br);
+
+// Combine
+str_stats = str_stats_adf$~str_stats_dfgls$~str_stats_MZt$~str_stats_MZa$~str_stats_MSB$~str_stats_MPT$~str_stats_PT$~str_stats_LM$~str_stats_kpss;
+
+// Print the UR table
+table_name = spath2 $+ "appendix3-post-covid-break-ur.txt";
+output file=^table_name on;
+fmt = "%15s";
+s = group_names$~"ADF"$~"DFGLS"$~"MZt"$~"MZa"$~"MSB"$~"MPT"$~"PT"$~"LM"$~"KPSS"$~"N"$~"Start Date"$~"End Date";
+sprintf(fmt, s);
+fmt2 = "%15s%15s%15s";
+cnames= strreplace(cnames, " ", "_");
+cnames= strreplace(cnames, " ", "_");
+s2 = cnames$~str_stats$~itos(N_obs);
+cnames= strreplace(cnames, " ", "_");
+cnames= strreplace(cnames, " ", "_");
+sprintf(fmt2, s2, start_date[., 2], end_date[., 2]);
+output off;
+
+// Reclassify rejection vectors for all tests
+{ reject_adf_1br, reject_adf_cts } = countsRejectionsRates(reject_adf_1br, "ADF Conclusion");
+{ reject_DFGLS_1br, reject_DFGLS_cts } = countsRejectionsRates(reject_DFGLS_1br, "DFGLS Conclusion");
+{ reject_PT_1br, reject_PT_cts } = countsRejectionsRates(reject_PT_1br, "PT Conclusion");
+{ reject_MZa_1br, reject_MZa_cts } = countsRejectionsRates(reject_MZa_1br, "MZa Conclusion");
+{ reject_MZt_1br, reject_MZt_cts } = countsRejectionsRates(reject_MZt_1br, "MZt Conclusion");
+{ reject_MSB_1br, reject_MSB_cts } = countsRejectionsRates(reject_MSB_1br, "MSB Conclusion");
+{ reject_MPT_1br, reject_MPT_cts } = countsRejectionsRates(reject_MPT_1br, "MPT Conclusion");
+{ reject_LM_1br, reject_LM_cts } = countsRejectionsRates(reject_LM_1br, "LM Conclusion");
+{ reject_kpss_1br, reject_kpss_cts } = countsRejectionsRates(reject_kpss_1br, "KPSS Conclusion");
+
+
+// Plot results
+struct plotControl ctl;
+ctl = plotGetDefaults("bar");
+
+plotLayout(3, 2, 1);
+plotSetTitle(&ctl, "Post-COVID: ADF Test Results with 1 Break(%)");
+plotFreq(ctl, reject_adf_1br, 1);
+
+plotLayout(3, 2, 2);
+plotSetTitle(&ctl, "Post-COVID: DFGLS Test Results with 1 Break(%)");
+plotFreq(ctl, reject_dFGLS_1br, 1);
+
+plotLayout(3, 2, 3);
+plotSetTitle(&ctl, "Post-COVID: MZa Test Results with 1 Break(%)");
+plotFreq(ctl, reject_MZa_1br, 1);
+
+plotLayout(3, 2, 4);
+plotSetTitle(&ctl, "Post-COVID: MZ_t Test Results with 1 Break(%)");
+plotFreq(ctl, reject_MZt_1br, 1);
+
+plotLayout(3, 2, 5);
+plotSetTitle(&ctl, "Post-COVID: LM Test Results with 1 Break(%)");
+plotFreq(ctl, reject_LM_1br, 1);
+
+if save_on;
+    plotSave(spath2 $+ "Post-COVID-break-ur-results.png", 11 | 8.5, "in");
+endif;
+
+struct plotControl ctl2;
+ctl2 = plotGetDefaults("bar");
+
+plotOpenWindow();
+plotClearLayout();
+plotSetTitle(&ctl, "Post-COVID: KPSS Test Results with 1 Break(%)");
+plotFreq(ctl, reject_kpss_1br, 1);
+
+if save_on;
+    plotSave(spath2 $+ "post-covid-break-stationarity-tests.png", 11 | 8.5, "in");
+endif;

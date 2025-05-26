@@ -1,0 +1,202 @@
+/*
+** This file computes and plots
+** by year, the cross-sectional:
+**       > Means
+**       > Variances
+*/
+new;
+library tspdlib;
+library tsmt;
+
+/*
+** Load data
+*/
+// Data loading path
+fpath = "clean-data/";
+
+// Data file
+ez = 0;
+if ez;
+    fname = "reg_data_group_dummy_ez_euro_start.dta";
+else;
+    fname = "reg_cab_data.csv";
+endif;
+
+// Results saving paths
+save_on = 1;
+spath = "results/data-summaries/plots/";
+sfile = "fig1-cab-csa-by-year.png";
+
+/*
+** Specify variable names
+*/
+group_names = "country_name";
+group_var = "cn";
+date_var = "Date";
+interest_var = "pct_cab";
+
+// Perform import
+data = (loadd(fpath $+ fname));
+
+// Change to date column
+//data = packr(data[., group_var interest_var date_var]);
+data = asdate(move(data), "%Y-Q%q", date_var );
+
+/*
+** Data transformations
+*/
+// Get unique country codes
+ccodes = unique(data[., group_var]);
+
+// Take absolute value of CAB
+data[., interest_var] = abs(data[., interest_var]);
+
+// Filter data to include observations after 1960
+data = delif(data, data[., date_var] .<"1960-01-01");
+
+// Set up asian and developing country indicator
+adc = (data[., "ldc"] .== 1 .and data[., "eap"] .== 1);
+data = data~asDF(adc, "adc");
+
+// Specify to use annual instead of quarterly
+annual = 0;
+if annual;
+    data_new = pdAggData(data, date_var, "Country", "Q", "Y", "AVE");
+endif;
+
+/*
+** Set up format for data plots
+*/
+// Plot control struct
+struct plotControl ctl;
+ctl = plotGetDefaults("xy");
+
+// Set the first curve, left y-axis
+// Set the second curve right y-axis
+string which = { "left", "right" };
+plotSetWhichYAxis(&ctl, which);
+
+// Set the left y-axis range to between 0 and 10,
+// and the right y-axis to between 0 and 100
+plotSetYRange(&ctl, 0|0, 10|100);
+plotSetXRange(&ctl, "1960", "2022");
+
+// Set up axis label size
+// Set grid line options specifically for the right Y Axis.
+plotSetActiveY(&ctl, "both");
+// Set axes tick labels to be 14 point 'times new roman'
+plotSetTicLabelFont(&ctl, "Verdana", 8);
+
+// Set up the line style
+plotSetLinePen(&ctl, 2, "black", 1|2);
+
+// Set up legend
+label = "Absolute Mean Value of Current Account (%GDP)"$|"Within Period Current Account (%GDP) Variance";
+plotSetLegend(&ctl, label, "bottom center outside", 0);
+
+/*
+** Iterate through country groups
+*/
+if ez;
+    string country_grps = { "idc", "ldc", "emg", "lac", "adc", "ez" };
+else;
+    string country_grps = { "idc", "ldc", "emg", "lac", "adc", "ez" };
+endif;
+string gr_title = {"Industrialized Countries", "Developing Countries", "Emerging Countries",
+    "Latin American Countries", "Developing Asian Countries", "Euro Zone" };
+
+for i(1, rows(country_grps), 1);
+    if annual;
+        tst_data = selif(data_new, data_new[., country_grps[i]] .== 1);
+    else;
+        tst_data = selif(data, data[., country_grps[i]] .== 1);
+    endif;
+    
+    /*
+    ** Perform CSA and CSVAR for country group
+    */
+    // Mean by year
+    csa_ca = aggregate(tst_data[., interest_var date_var], "mean", date_var);
+    
+    // Variance by year
+    csvar_ca = aggregate(tst_data[., interest_var date_var], "variance", date_var);
+    
+    plotLayout(3, 2, i);
+    
+    plotSetTitle(&ctl, gr_title[i], "Arial", 16);
+    
+    // Create plots
+    plotXY(ctl, csa_ca[.,date_var], csa_ca[.,interest_var]~csvar_ca[., interest_var]);
+    if country_grps[i] == "euro";
+        struct plotControl ctl2;
+        ctl2 = plotGetDefaults("xy");
+        
+        plotSetLinePen(&ctl2, 2, "red", 3);
+        plotAddVLine(ctl2, asDate("1999"));
+        plotAddTextbox("Eurozone Formation", asDate("1999"), 10);
+    endif;
+endfor;
+
+if save_on;
+    plotSave(spath $+ sfile, 11|8.5, "in");
+endif;
+
+proc (3) = plotGetPeriodCABMean(data, interest_var, time_var, date1, date2);
+    local tmp_data, mean, dts, t;
+    
+    
+    if date1 $== "";
+        tmp_data = selif(data, data[., time_var] .< date2);
+    elseif date2 $== "";
+        tmp_data = selif(data, data[., time_var] .>= date1);
+    else;
+        tmp_data = selif(data, data[., time_var] .>= date1 .and data[., time_var] .<date2);
+    endif;
+    
+    // Get period mean
+    mean = meanc(tmp_data[., interest_var]);
+    
+    dts = unique(tmp_data[., time_var]);
+    t = rows(dts);
+    
+    retp(mean, dts, t);
+endp;
+
+proc (1) = pdAggData(data, time_var, grp_var, st_freq, end_freq, method);
+    local grps, dates, nobs, data_new, st_indx, end_indx, tmp_data, agg_data;
+    
+    // Get dimensions
+    nobs = rows(data);
+    
+    // Get grps
+    grps = unique(data[., grp_var]);
+    dates = unique(data[., time_var]);
+    
+    data_new = zeros(nobs, cols(data));
+    
+    st_indx = 1;
+    
+    // Loop through groups
+    for i(1, rows(grps), 1);
+        
+        tmp_data = selif(data, data[., grp_var] .== grps[i]);
+        
+        
+        // Aggregate data
+        agg_data = aggData(tmp_data, st_freq, end_freq, method);
+        end_indx = (st_indx-1)+rows(agg_data);
+        
+        data_new[st_indx:end_indx, .] = agg_data;
+        
+        st_indx = end_indx + 1;
+    endfor;
+    
+    data_new = copymetadata(data_new, data);
+    data_new = delif(data_new, data_new[., interest_var] .== 0);
+    
+    retp(data_new);
+endp;
+
+
+
+

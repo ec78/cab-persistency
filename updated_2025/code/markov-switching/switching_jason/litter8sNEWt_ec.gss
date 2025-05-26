@@ -1,0 +1,268 @@
+/*LIKEPROC
+
+This proc evaluates the Markov switching likelihood function */
+
+/* ------------------------------------------------------- */
+
+proc tofn(th);
+ local junk, PIG, PI1, PI2, PI3, pb, qb, aba, aca, ada, aea,  
+          alpha0, alpha1, pm, pv, qm, qv, sig0, sig1, f, 
+          fit, it, pas1, pas0, phi1, qq, 
+          aphi1, aphi2, aphi3, aphi4, fhi1, afhi1, afhi2, afhi3,  
+          afhi4, itt, z1, z0, zz, z1MinusAlpha0_vec, 
+          z1MinusAlpha1_vec, z0MinusAlpha0_Vec, z0MinusAlpha1_vec,
+          A, B, C, D, E, bigF, G, H, z0MinusAlpha0OverSig0, z1MinusAlpha0OverSig0,
+         z0MinusAlpha0Oversig1, z1MinusAlpha0OverSig1, z0MinusAlpha1Oversig0,
+         z1Minusalpha1Oversig0, z0Minusalpha1Oversig1, z1Minusalpha1Oversig1;  
+    
+    junk = zeros(16,2);
+    /* ================= */
+    /*  Establish values of constant parameters */
+    qq = zeros(1,1);
+    
+    alpha0 = th[1,1];
+    alpha1  = th[2,1];
+    
+    pm = (th[3,1]^2)/( 1 + th[3,1]^2);
+    qm = (th[4,1]^2)/( 1 + th[4,1]^2);
+    pv = (th[5,1]^2)/( 1 + th[5,1]^2);
+    qv = (th[6,1]^2)/( 1 + th[6,1]^2);
+    pb = (th[7,1]^2)/( 1 + th[7,1]^2);
+    qb = (th[8,1]^2)/( 1 + th[8,1]^2);
+    
+    
+    PI1 = (qm~(1-pm))|((1-qm)~pm);
+    PI2 = (qv~(1-pv))|((1-qv)~pv);
+    PI3 = (qb~(1-pb))|((1-qb)~pb);
+    
+    
+    PIG = PI1.*.PI2.*.PI3;
+    
+    sig0 = abs(th[9,1]);
+    phi1 = th[10,1];
+    aphi1 = th[11,1];
+    aphi2 = th[12,1];
+    aphi3 = th[13,1];
+    aphi4 = th[14,1];
+    
+    sig1 = abs(th[15,1]);
+    fhi1 = th[16,1];
+    afhi1 = th[17,1];
+    afhi2 = th[18,1];
+    afhi3 = th[19,1];
+    afhi4 = th[20,1];
+    
+    
+    
+    aba = PIG;
+    
+    aca = eye(8) - aba;
+    ada = aca|ones(1,8);
+
+    local bigP, pig_bigP, tmp;
+    bigP = zeros(8, 1);
+    
+    if  det(ada'ada)== 0;
+        bigP[1] = 1/8;
+        bigP[2] = 1/8;
+        bigP[3] = 1/8;
+        bigP[4] = 1/8;
+        bigP[5] = 1/8;
+        bigP[6] = 1/8;
+        bigP[7] = 1/8;
+        bigP[8] = 1/8;
+    else;
+        aea = inv(ada'ada)*ada';
+        bigP[1] = aea[1, 9];
+        bigP[2] = aea[2, 9];
+        bigP[3] = aea[3, 9];
+        bigP[4] = aea[4, 9];
+        bigP[5] = aea[5, 9];
+        bigP[6] = aea[6, 9];
+        bigP[7] = aea[7, 9];
+        bigP[8] = aea[8, 9];
+    endif;
+    
+    
+    if kc == 2;
+        "parameter vector:";
+        th';
+        "";
+        "Obs Current  1-lag    2-lag    3-lag ";
+    endif;
+    
+    
+    zz = yu[4:na-1,1]~dya[4:na-1,1]~dya[3:na-2,1]~dya[2:na-3,1]~dya[1:na-4,1];
+    
+    pas0 = (phi1~aphi1~aphi2~aphi3~aphi4);
+    pas1 = (fhi1~afhi1~afhi2~afhi3~afhi4);
+    
+    f = zeros(na-4,1);
+    it = 5;
+    
+    local sqrtPi, sqPiSig0, sqPiSig1, sig02, sig12, z0big, z1big;
+    sqrtPi = sqrt(2*pi);
+    sqPiSig0 = sqrtPi*sig0;
+    sqPiSig1 = sqrtPi*sig1;
+    sig02 = (2*(sig0^2));
+    sig12 = (2*(sig1^2));
+    
+    z0big = trimr(dya[., 1], 4, 0) - (pas0*zz')';
+    z1big = trimr(dya[., 1], 4, 0) - (pas1*zz')';
+    z0MinusAlpha0_Vec = z0big - alpha0;
+    z0MinusAlpha1_vec = z0big - alpha1;
+    z1MinusAlpha0_vec = z1big - alpha0;
+    z1MinusAlpha1_vec = z1big - alpha1;
+    
+    z0MinusAlpha0OverSig0  = z0MinusAlpha0_Vec./sig0;
+    z1MinusAlpha0OverSig0 = z1MinusAlpha0_Vec./sig0;
+    z0MinusAlpha0Oversig1 = z0MinusAlpha0_Vec./sig1;
+    z1MinusAlpha0OverSig1 = z1MinusAlpha0_Vec./sig1;
+    z0MinusAlpha1Oversig0 = z0MinusAlpha1_Vec./sig0;
+    z1Minusalpha1Oversig0 = z1MinusAlpha1_Vec./sig0;
+    z0Minusalpha1Oversig1 = z0MinusAlpha1_Vec./sig1;
+    z1Minusalpha1Oversig1 = z1MinusAlpha1_Vec./sig1;
+    
+    do until it > na;
+        itt = it - 4;
+        
+        
+        z0 = z0big[itt];
+        z1 = z1big[itt];
+        
+        local bigP1, bigRes, z1minusAlpha1, z1minusAlpha0, z0MinusAlpha1, z0MinusAlpha0;
+        z0MinusAlpha0 = z0MinusAlpha0_vec[itt];
+        z0MinusAlpha1 = z0MinusAlpha1_vec[itt];
+        z1MinusAlpha1 = z1MinusAlpha1_vec[itt];
+        z1MinusAlpha0 = z1MinusAlpha0_vec[itt];
+        
+        A = z0MinusAlpha0OverSig0[itt];
+        B = z1MinusAlpha0OverSig0[itt];
+        C = z0MinusAlpha0Oversig1[itt];
+        D = z1MinusAlpha0OverSig1[itt];
+        E = z0MinusAlpha1Oversig0[itt];
+        bigF = z1Minusalpha1Oversig0[itt];
+        G = z0Minusalpha1Oversig1[itt];
+        H = z1Minusalpha1Oversig1[itt];
+        
+//        z0MinusAlpha0 = (z0 - alpha0);
+//        z0MinusAlpha1 = (z0 - alpha1);
+//        z1minusAlpha1 = (z1 - alpha1);
+//        z1minusAlpha0 = (z1 - alpha0);
+        bigP1 = zeros(8, 8);
+        bigRes = bigP1;
+        pig_bigP = PIG'.*bigP;
+        tmp = pig_bigP[., 1];
+        
+        if abs(A) > 15;
+            qq = 0;
+        else;
+            qq = exp((-(z0MinusAlpha0^2))/sig02)/sqPiSig0;
+        endif;
+        
+        // Remove concatenation for computational efficiency
+        // Old p1a
+        bigP1[., 1] = tmp.*qq;
+        
+        if abs(B) > 15;
+            qq = 0;
+        else;
+            qq = exp((-(z1Minusalpha0^2))/sig02)/sqPiSig0;
+        endif;
+        
+        // Remove concatenation for computational efficiency
+        // Old p1b
+        bigP1[., 2] = pig_bigP[., 2].*qq;
+        
+        if abs(C) > 15;
+            qq = 0;
+        else;
+            qq = exp((-(z0MinusAlpha0^2))/sig12)/sqPiSig1;
+        endif;
+        
+        // Remove concatenation for computational efficiency
+        // Old p1c
+        bigP1[., 3] = pig_bigP[., 3].*qq; 
+        
+        if abs(D) > 15;
+            qq = 0;
+        else;
+            qq = exp((-(z1Minusalpha0^2))/sig12)/sqPiSig1;
+        endif;
+        
+        // Remove concatenation for computational efficiency
+        // Old p1d
+        bigP1[., 4] = pig_bigP[., 4].*qq;
+        
+        if abs(E) > 15;
+            qq = 0;
+        else;
+            qq = exp((-(z0Minusalpha1^2))/sig02)/sqPiSig0;
+        endif;
+        
+        // Remove concatenation for computational efficiency
+        // Old p1e
+        bigP1[., 5] = pig_bigP[., 5].*qq;
+        
+        
+        if abs(bigF) > 15;
+            qq = 0;
+        else;
+            qq = exp((-(z1Minusalpha1^2))/sig02)/sqPiSig0;
+        endif;
+        
+        // Remove concatenation for computational efficiency
+        // Old p1f
+        bigP1[., 6] = pig_bigP[., 6].*qq;
+       
+        if abs(G) > 15;
+            qq = 0;
+        else;
+            qq = exp((-(z0Minusalpha1^2))/sig12)/sqPiSig1;
+        endif;
+        
+        // Remove concatenation for computational efficiency
+        // Old p1g
+        bigP1[., 7] = pig_bigP[., 7].*qq;
+        
+        if abs(H) > 15;
+            qq = 0;
+        else;
+            qq = exp((-(z1Minusalpha1^2))/sig12)/sqPiSig1;
+        endif;
+        
+        // Remove concatenation for computational efficiency
+        // Old p1h
+        bigP1[., 8] = pig_bigP[., 8].*qq;
+        
+        local bigPX, bigSRes;
+        bigPX = sumc(bigP1);
+        
+        fit = sumc(bigPX);
+        
+        if fit > 0;
+            f[it-4] = ln(fit);
+        else;
+            f[it-4] = - 1000;
+        endif;
+        
+        bigP = bigPX/fit;
+        
+        proba[itt, 1] = sumc(trimr(bigP, 0, 4));
+        proba[itt, 2] =  sumc(trimr(bigP, 0, 6)) + sumc(trimr(bigP, 4, 2));
+        proba[itt, 3] = sumc(bigP[1 3 5 7]);
+        
+        @ if kc == 2;
+        format /rd 5,2;
+        format 8,4;p1;;p2;;p3;;p4;
+        format /m0 /rd 14,6;
+        endif;@
+        
+        
+        it = it+1;
+    endo;
+    
+    
+    retp(-f);
+endp;
+/* ----------------------------------------------------------- */

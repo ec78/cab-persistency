@@ -1,1 +1,57 @@
+/*
+** Creates time-series graphs of determinants of interest for specified countries
+*/
 
+// Load coefficient data
+data_path2 = "data/";
+fname = "reg_2_data.gdat";
+
+// Reg_2_data 
+reg_2_data = loadd(data_path2 $+ fname2);
+
+// Create country list
+string cntry_list = {"Japan", "Indonesia", "Belgium", "Argentina", "Chile", "Estonia", "Malaysia", "Cambodia", "Belarus", "India" };
+
+// Create variable list
+string var_list = { "pct_cab", "irr", "ka_open", "gsur", "fdi_inflows", "fdi_outflows", "res", "resminusgold"};
+
+// Start plot
+
+for i (1, rows(cntry_list), 1);
+        tmp_data = selif(reg_2_data, reg_2_data[., "Country"] .== cntry_list[i]);  
+    for j(1, rows(cntry_list), 1);
+        
+        
+
+proc (3) = __pd_select_group_list(data, groupvar, grp_list);
+    
+    // Count number of variables in list
+    N_vars = rows(varlist);
+    
+    // Get column labels
+    { grp_names, keys } = getColLabels(data, groupvar);
+    N_groups = rows(grp_names);
+    
+    // Get indices
+    st_indx = indnv(grp_names, reg_2_data[., groupvar], 1);
+    end_indx = (st_indx[2:rows(st_indx)]-1)|rows(data);
+    
+    retp(st_indx, end_indx, N_groups);
+endp;
+
+
+proc (3) = __pd_select_group_data(data, groupvar);
+    
+    // Count number of variables in list
+    N_vars = rows(varlist);
+    
+    // Get column labels
+    { grp_names, keys } = getColLabels(data, groupvar);
+    N_groups = rows(grp_names);
+    
+    // Get indices
+    st_indx = indnv(grp_names, reg_2_data[., groupvar], 1);
+    end_indx = (st_indx[2:rows(st_indx)]-1)|rows(data);
+    
+    retp(st_indx, end_indx, N_groups);
+endp;

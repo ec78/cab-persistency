@@ -1,33 +1,48 @@
 new;
 
 // Results saving paths
-root = "C:/Users/eclow/Documents/GitHub/cab-persistency/results/";
-spath = root $+ "data_plots/reg_data/";
-spath2 = root $+ "data_stats";
+root = "C:/Users/eclow/Documents/GitHub/cab-persistency/";
+fpath = root $+ "updated_2025/clean-data/";
+
+spath = root $+ "updated_2025/results/data-summaries/plots/";
+spath2 = root $+ "updated_2025/results/data-summaries/data-stats/";
+
+// Data file
+fname = "reg_cab_data.csv";
+
+/*
+** Specify variable names
+*/
+group_names = "country_name";
+group_var = "cn";
+date_var = "Date";
+interest_var = "pct_cab";
 
 // Load data
-reg_data = loadd("data/reg_data.gdat");
+reg_data = packr(loadd(fpath $+ fname));
+reg_data = asdate(move(reg_data), "%Y-Q%q", date_var);
+
 
 // Filter data to pre-covid period
-post_data = selif(reg_data, reg_data[., "date2"] .>= "2020-03");
-pre_data = selif(reg_data, reg_data[., "date2"] .< "2020-03");
+post_data = selif(reg_data, reg_data[., date_var] .>= "2020-03");
+pre_data = selif(reg_data, reg_data[., date_var] .< "2020-03");
 
 // Get unique country codes
-ccodes = unique(pre_data[., "cn"]);
+ccodes = unique(pre_data[., group_var]);
 
 // Get column labels 
-{ cnames, keys } = getColLabels(pre_data, "Country");
+{ cnames, keys } = getColLabels(pre_data, group_names);
 
 // Get pre-covid summary table
 table_name = spath2 $+ "precovid-summary-stats.csv";
-pre_sum_table = getCABSummary(pre_data, "date3", "Country", "pct_ca_reg");
-end;
+pre_sum_table = getCABSummary(pre_data, date_var, group_names, interest_var);
+
 saved(pre_sum_table, table_name);
 //output off;
 
 // Get post-covid summary table
 table_name = spath2 $+ "postcovid-summary-stats.csv";
-post_sum_table = getCABSummary(post_data, "date3", "Country", "pct_ca_reg");
+post_sum_table = getCABSummary(post_data, date_var, group_names, interest_var);
 saved(post_sum_table, table_name);
 
 //output off;
@@ -40,16 +55,16 @@ proc (1) = getCABSummary(reg_data, time_var, group_var, interest_var);
     reg_data = sortc(reg_data, group_var$|time_var);
     
     // Get statistics
-    mean_ca = packr(asDF(aggregate(reg_data[., interest_var group_var], "mean", group_var), "country", "Mean CAB/GDP%"));
-    min_ca =  packr(asDF(aggregate(reg_data[., interest_var group_var], "min", group_var), "country", "Min CAB/GDP%"));
-    max_ca =  packr(asDF(aggregate(reg_data[., interest_var group_var], "max", group_var), "country", "Max CAB/GDP%"));
-    sd_ca =  packr(asDF(aggregate(reg_data[., interest_var group_var], "sd", group_var), "country", "SD CAB/GDP%"));
+    mean_ca = packr(asDF(aggregate(reg_data[., interest_var group_var], "mean", group_var), group_names, "Mean CAB/GDP%"));
+    min_ca =  packr(asDF(aggregate(reg_data[., interest_var group_var], "min", group_var), group_names, "Min CAB/GDP%"));
+    max_ca =  packr(asDF(aggregate(reg_data[., interest_var group_var], "max", group_var), group_names, "Max CAB/GDP%"));
+    sd_ca =  packr(asDF(aggregate(reg_data[., interest_var group_var], "sd", group_var), group_names, "SD CAB/GDP%"));
 
     // Remove missing values to get accurate counts
     // and time ranges
     tmp_data = packr(reg_data[., interest_var time_var group_var]);
-    start_date = asDF(aggregate(tmp_data[., time_var group_var], "min", group_var), "country", "Start Date");
-    end_date = asDF(aggregate(tmp_data[., time_var group_var], "max", group_var), "country", "End Date");
+    start_date = asDF(aggregate(tmp_data[., time_var group_var], "min", group_var), group_names, "Start Date");
+    end_date = asDF(aggregate(tmp_data[., time_var group_var], "max", group_var), group_names, "End Date");
     
     // Count observations by group
     count_obs = counts(tmp_data[., group_var], unique(tmp_data[., group_var])); 

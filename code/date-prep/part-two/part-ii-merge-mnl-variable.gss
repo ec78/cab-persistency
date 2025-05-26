@@ -1,0 +1,101 @@
+new;
+cls;
+#include code/cab_util.src 
+
+/****************************************************************
+** Data loading information
+****************************************************************/
+// Data loading path
+fpath = "data/";
+
+// Filename
+fname1 = "reg_2_data.gdat";
+fname2 = "pcgdp.xlsx";
+fname3 = "lmf-nfa2023.dta";
+fname4 = "crises.dta";
+fname5 = "yearly-data-eric.xlsx";
+
+// IFS Reer using CPI
+fname6 = "reer.csv";
+/**********************************************************************
+Import Raw
+***********************************************************************/
+
+// Import raw data
+lmf_data = loadd(fpath $+ fname3);
+lmf_data = dftype(move(lmf_data), META_TYPE_CATEGORY, "cn");
+lmf_data[., "year"] = asdate(lmf_data[., "year"], "%Y");
+
+// Load base data
+reg_2_data = loadd(fpath $+ fname1);
+
+// Load pcgdp
+pc_gdp = loadd(fpath $+ fname2);
+pc_gdp = dfname(move(pc_gdp), "pc_gdp", "Private credit by deposit money banks and other financial institutions to GDP ___");
+pc_gdp[., "year"] = asdate(pc_gdp[., "year"], "%Y");
+pc_gdp = dftype(move(pc_gdp), META_TYPE_CATEGORY, "imfn");
+pc_gdp = dfname(move(pc_gdp), "cn", "imfn");
+
+// Load crises data
+crises = loadd(fpath $+ fname4);
+crises[., "year"] = asdate(crises[., "year"], "%Y");
+crises = dftype(move(crises), META_TYPE_CATEGORY, "cn");
+
+// Yearly data from Jamel
+yearly = loadd(fpath $+ fname5);
+
+// REER 
+reer_wide = loadd(fpath $+ fname6);
+
+// Get all column names and remove the first column name, 'Years'
+columns = getcolnames(reer_wide);
+columns = trimr(columns, 1, 0);
+
+names_to = "Country";
+values_to = "reer";
+
+reer_long = dfLonger(reer_wide, columns, names_to, values_to);
+reer_long = sortmc(reer_long, 2|1);
+
+reer_long = outerJoin(reg_2_data[., "Country" "cn"], "Country", reer_long, "Country");
+
+/***********************************************
+Compose Regression Variables
+**************************************************/
+// Exchange rate regimes
+er_regimes = "fixed"$|"flexible";
+
+// Trade openness in ln 
+trade_openness = setColNames(ln(reg_2_data[., "opn"]), "ln_opn");
+
+// Financial openness as deviation from mean
+// note must drop missings to get mean
+financial_open = reg_2_data[., "ka_open"] - meanc(packr(reg_2_data[. , "ka_open"]));
+
+reg_2_varlist = "Country"$|"cn"$|"Year"$|"Regime Type";
+
+// Regime Data
+mnl_choice_data = reg_2_data[., "Country" "cn" "Year" "Regime Type"];
+
+current_moving_sum = movingSumPanel(reg_2_data[., "Country" "gsur"], "Country", 3);
+current_moving_sum = dfname(move(current_moving_sum), "gsur_movingsum", "X2");
+
+// Combine data
+mnl_data = mnl_choice_data~current_moving_sum[., "gsur_movingsum"]~trade_openness~financial_open~reg_2_data[., er_regimes' "ryg" "rypc_ppp"];
+mnl_data = outerJoin(mnl_data, "cn"$|"Year", lmf_data[., "cn" "year" "ir_r_lmf" "nfa_r"], "cn"$|"year");
+mnl_data = outerJoin(mnl_data, "cn"$|"Year", pc_gdp[., "cn" "year" "income" "pc_gdp"], "cn"$|"year");
+mnl_data[., "pc_gdp"] = mnl_data[., "pc_gdp"]/100;
+mnl_data = outerJoin(mnl_data, "cn"$|"Year", crises, "cn"$|"year");
+
+// Check data availability 
+var_list = trimr(getcolNames(mnl_data), 3, 0);
+
+// Drop 
+tspan_vars = pdTimeSpans(mnl_data, "Year", "Country", var_list);
+start_dates = asDate(posixtostrc(maxc(tspan_vars[., var_list$+" Start"]'), "%Y"), "%Y");
+start_dates = dfname(move(start_dates), "Availability Start", "X1");
+
+end_dates = asDate(posixtostrc(minc(tspan_vars[., var_list$+" End"]'), "%Y"), "%Y");
+end_dates = dfname(move(end_dates), "Availability End", "X1");
+tspan_vars = tspan_vars~start_dates~end_dates;
+saved(tspan_vars, fpath $+ "time_span_mnl_vars.csv");

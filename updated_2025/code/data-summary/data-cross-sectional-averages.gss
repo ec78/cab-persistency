@@ -1,0 +1,135 @@
+/*
+** This file computes and plots
+** by year, the cross-sectional:
+**       > Means
+**       > Variances
+*/
+new;
+library tspdlib;
+
+#include code/cab_util.src
+
+/*
+** Load data
+*/
+// Data loading path
+root = "C:/Users/eclow/Documents/GitHub/cab-persistency/";
+fpath = root $+ "updated_2025/clean-data/";
+
+// Data file
+fname = "reg_cab_data.csv";
+
+// Results saving paths
+spath1 = root $+ "updated_2025/results/data-summaries/plots/";
+//spath2 = root $+ "updated_2025/results/unit-root-tests/with-breaks/";
+
+// Perform import
+data = (loadd(fpath $+ fname));
+
+/*
+** Specify variable names
+*/
+group_var = "country_name";
+date_var = "Date";
+interest_var = "pct_cab";
+
+// Change to date column
+data = packr(data[., group_var interest_var date_var]);
+data = asdate(move(data), "%Y-Q%q", date_var );
+
+/*
+** Data transformations
+*/
+// Get unique country codes
+ccodes = unique(data[., group_var]);
+
+// Take absolute value of CAB
+data[., interest_var] = abs(data[., interest_var]);
+
+// Filter data to include observations after 1960
+data = delif(data, data[., date_var] .<"1960-01-01");
+
+/*
+** Perform CSA and CSVAR
+*/
+// Mean by date 
+csa_ca = aggregate(data[., interest_var date_var], "mean", date_var);
+
+// Variance by date
+csvar_ca = aggregate(data[., interest_var date_var], "variance", date_var);
+
+/*
+** Plot data
+*/
+// Plot control struct
+struct plotControl ctl;
+ctl = plotGetDefaults("xy");
+
+// Set the first curve, left y-axis
+// Set the second curve right y-axis
+string which = { "left", "right" };
+plotSetWhichYAxis(&ctl, which);
+
+// Set the left y-axis range to between 0 and 10,
+// and the right y-axis to between 0 and 100
+plotSetYRange(&ctl, 0|10, 0|100);
+
+// Set up the line style
+plotSetLinePen(&ctl, 2, "black", 1|2);
+
+// Set up legend
+label = "Absolute Mean Value of Current Account (%GDP)"$|"Within Period Current Account (%GDP) Variance";
+plotSetLegend(&ctl, label, "bottom center outside", 0);
+
+// Create plots
+plotXY(ctl, csa_ca[.,date_var], csa_ca[.,interest_var]~csvar_ca[., interest_var]);
+
+/*
+** Compute mean bars
+*/
+{ mean_1, dts_1, t_1 } = plotGetPeriodCABMean(data, interest_var, date_var, "", "1975");
+{ mean_2, dts_2, t_2 } = plotGetPeriodCABMean(data, interest_var, date_var, "1975", "1995");
+{ mean_3, dts_3, t_3 } = plotGetPeriodCABMean(data, interest_var, date_var, "1995", "2008-09");
+{ mean_4, dts_4, t_4 } = plotGetPeriodCABMean(data, interest_var, date_var, "2009", "2019-12");
+{ mean_5, dts_5, t_5 } = plotGetPeriodCABMean(data, interest_var, date_var, "2020-03", "2025");
+
+// Plot control structure
+struct plotControl plt;
+plt = plotGetDefaults("xy");
+
+// Set up the line style
+plotSetLinePen(&plt, 2, "red", 3|3|3);
+
+/*
+** Declare 'myAnnotation' to be an instance of a plotAnnotation
+** structure and fill it in with default values
+*/
+struct plotAnnotation myAnnotation;
+myAnnotation = annotationGetDefaults();
+
+annotationSetFont(&myAnnotation, "arial", 12, "black");
+
+// Add mean lines
+plotAddtshf(plt, dts_1, "years", ones(t_1,1)*mean_1);
+text1 = "Pre-1975, Mean = " $+ ntos(mean_1, 3);
+plotAddTextbox(myAnnotation, text1, asDate("1962"), mean_2);
+
+plotAddtshf(plt, dts_2, "years", ones(t_2,1)*mean_2);
+text2 = "1975-1994, Mean = " $+ ntos(mean_2, 3);
+plotAddTextbox(myAnnotation, text2, asDate("1978"), mean_3+0.5);
+
+plotAddtshf(plt, dts_3, "years", ones(t_3,1)*mean_3);
+text3 = "1995-Sep.2008, Mean = " $+ ntos(mean_3, 3);
+plotAddTextbox(myAnnotation, text3, asDate("1996"), 7);
+
+plotAddtshf(plt, dts_4, "years", ones(t_4,1)*mean_4);
+text4 = "2009-2020, Mean = " $+ ntos(mean_4, 3);
+plotAddTextbox(myAnnotation, text4, asDate("2010"), 6);
+
+plotAddtshf(plt, dts_5, "years", ones(t_5,1)*mean_5);
+text4 = "Mar.2020-2025, Mean = " $+ ntos(mean_5, 3);
+plotAddTextbox(myAnnotation, text4, asDate("2013"), 8.5);
+
+plotSave(spath1 $+ "cab_means_variance_time.jpg", 11.5|8.5, "in");
+
+

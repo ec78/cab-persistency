@@ -1,0 +1,405 @@
+//proc (1) = rollingARIMAFit(yt, wind, ...);
+//    local beta_, res, T, fnl_T;
+    
+//    // Setup Estimation Parameters
+//    T = rows(yt);
+//    fnl_T = T-wind;
+    
+//    // Storage Matrices
+//    beta_=zeros(T, 2);
+//    res = zeros(T, 1);
+    
+//    for i(1, fnl_T, 1);
+//        struct arimamtOut amo;
+//        amo = arimaFit(yt[i:(wind-1)+i], 1);
+//        beta_[i, .] = amo.b';
+//    endfor;
+    
+//    retp(beta_);
+//endp;
+
+proc (2) = countsRejectionsRates(reject_vector, varname);
+    local reject_df, reject_cts;
+    
+    reject_df = asDf(reclassifyRejectionRates(reject_vector), varname);
+    reject_cts = _frequency(reject_df, 1, 1, 1, 0);
+
+    retp(reject_df, reject_cts);
+endp;
+
+proc (1) = reclassifyRejectionRates(reject_vector);
+    local to, from;
+    
+    // Values to reclassify to
+    to = "Reject at 1%"$|"Reject at 5%"$|"Reject at 10%"$|"Cannot reject";
+    
+    // Values to classify from
+    from = { .01, 0.05, 0.10, 0 };
+    
+    // Reclassify vector
+    retp(reclassify(reject_vector, from, to));
+endp;
+
+proc (1) = addAsterisks(stats_vec, rejection);
+    local str_stats, e1, e2, e3;
+    
+    // Convert to string
+    str_stats = ntos(stats_vec, 4);
+    
+    // Add asterisks
+    for i(1, rows(stats_vec), 1);
+        if rejection[i] == 0.01;
+            str_stats[i] = str_stats[i]$+"***";
+        elseif rejection[i] == 0.05;
+            str_stats[i] = str_stats[i]$+"**";
+        elseif rejection[i] == 0.10;
+            str_stats[i] = str_stats[i]$+"*";
+        endif;
+    endfor;
+    
+    retp(str_stats);
+endp;
+
+proc (1) = addAsterisksToStats(stats_vec, cv_vec, h0);
+    local str_stats, e1, e2, e3;
+    
+    // Convert to string
+    str_stats = ntos(stats_vec, 4);
+    
+    // Add asterisks
+    if h0 == 1;
+        e1 = (stats_vec .<= cv_vec[., 1]);
+        e2 = (stats_vec .<= cv_vec[., 2] .and stats_vec .> cv_vec[., 1]);
+        e3 = (stats_vec .<= cv_vec[., 3] .and stats_vec .> cv_vec[., 2]);
+    elseif h0 == 2;
+        e1 = (stats_vec .>= cv_vec[., 1]);
+        e2 = (stats_vec .>= cv_vec[., 2] .and stats_vec .< cv_vec[., 1]);
+        e3 = (stats_vec .>= cv_vec[., 3] .and stats_vec .< cv_vec[., 2]);
+    endif;
+    
+    for i(1, rows(stats_vec), 1);
+        if e1[i];
+            str_stats[i] = str_stats[i]$+"***";
+        elseif e2[i];
+            str_stats[i] = str_stats[i]$+"**";
+        elseif e3[i];
+            str_stats[i] = str_stats[i]$+"*";
+        endif;
+    endfor;
+    
+    retp(str_stats);
+endp;
+
+// Use 0 for less than, 1 for greater than
+proc (1) = checkRejection(stat, cv, direction);
+    local rejection;
+    
+    rejection = 0;
+    if direction;
+        if stat >= cv[1];
+            rejection = 0.01;
+        elseif stat >= cv[2];
+            rejection = 0.05;
+        elseif stat >= cv[3];
+            rejection = 0.10;
+        endif;
+    else;
+        if stat <= cv[1];
+            rejection = 0.01;
+        elseif stat <= cv[2];
+            rejection = 0.05;
+        elseif stat <= cv[3];
+            rejection = 0.10;
+        endif;
+    endif;
+    retp(rejection);
+endp;
+
+proc (1) = __get_test_y(data, cname);
+    local e, tmp_data, y_test;
+    
+    // Select data for country
+    e = data[., "Country"] .== cname;
+    
+    // Get test data
+    tmp_data = selif(data[., "date2" "pct_ca_reg"], e);
+    
+    // Get CAB for country
+    y_test = packr(tmp_data[., "date2" "pct_ca_reg"]);
+    
+    retp(y_test);
+endp;
+
+proc (1) = __get_test_y_w_country(data, cname);
+    local e, tmp_data, y_test;
+    
+    // Select data for country
+    e = data[., "Country"] .== cname;
+    
+    // Get test data
+    tmp_data = selif(data[., "Country" "cn" "ccode" "date2" "pct_ca_reg"], e);
+    
+    // Get CAB for country
+    y_test = packr(tmp_data[., "Country" "cn" "ccode" "date2" "pct_ca_reg"]);
+    
+    retp(y_test);
+endp;
+
+// Function to compute moving sum for panel data
+proc movingSumPanel(data, groupvar, wind);
+    local grp_names, groups, keys, N_groups, N_vars, moving_sum, st_indx, end_indx, missing_df;
+    
+    // Get column labels
+    { grp_names, keys } = getColLabels(data, groupvar);
+    N_groups = rows(grp_names);
+    N_vars = cols(data);
+    groups = data[., groupvar];
+    
+    // Get indices
+    st_indx = indnv(grp_names, data[., groupvar], 1);
+    end_indx = (st_indx[2:rows(st_indx)]-1)|rows(data);
+    
+    // Create an output matrix initialized to zeros
+    moving_sum = zeros(rows(data), N_vars-1);
+
+    data = delcols(data, groupvar);
+    
+    // Loop through each group
+    // Loop over groups
+    for i(1, N_groups, 1);
+        if not st_indx[i] == miss();
+           moving_sum[st_indx[i]:end_indx[i], .] = movingSumc(data[st_indx[i]:end_indx[i], .], wind);
+        endif;
+    endfor;
+
+    retp(groups~moving_sum);
+endp;
+
+proc (1) = movingSumc(data, wind);
+    local n, result, i;
+
+    n = rows(data);
+    result = zeros(n, cols(data));
+
+    // Loop through each row in x
+    for i(1, n, 1);
+        if i < wind;
+            // For the initial rows, compute the sum for available elements
+            result[i, .] = sumc(data[1:i, .])';
+        else;
+            // For subsequent rows, compute the moving sum for the specified window
+            result[i, .] = sumc(data[(i-wind+1):i, .])';
+        endif;
+    endfor;
+    
+    retp(result);
+endp;
+
+
+proc (1) = pdImpute(data, varlist, groupvar, method);
+    local grp_names, keys, N_groups, N_vars, tmp_data, st_indx, end_indx;
+    
+    // Count number of variables in list
+    N_vars = rows(varlist);
+    
+    // Get column labels
+    { grp_names, keys } = getColLabels(data, groupvar);
+    N_groups = rows(grp_names);
+    
+    // Get indices
+    st_indx = indnv(grp_names, data[., groupvar], 1);
+    end_indx = (st_indx[2:rows(st_indx)]-1)|rows(data);
+    
+    // Loop over groups
+    for i(1, N_groups, 1);
+        if not st_indx[i] == miss();
+            for j(1, N_Vars, 1);
+                data[st_indx[i]:end_indx[i], varlist[j]] = impute(data[st_indx[i]:end_indx[i], varlist[j]], method);
+            endfor;
+        endif;
+    endfor;
+    
+    retp(data);
+endp;
+
+proc (1) = pdCountMissings(data, varlist, groupvar);
+    local grp_names, keys, N_groups, N_vars, missings_mat, st_indx, end_indx, missing_df;
+    
+    // Count number of variables in list
+    N_vars = rows(varlist);
+    
+    // Get column labels
+    { grp_names, keys } = getColLabels(data, groupvar);
+    N_groups = rows(grp_names);
+    
+    // Get indices
+    st_indx = indnv(grp_names, data[., groupvar], 1);
+    end_indx = (st_indx[2:rows(st_indx)]-1)|rows(data);
+    
+    // Create storage matrix
+    missings_mat = zeros(N_groups, N_vars);
+    
+    // Loop over groups
+    for i(1, N_groups, 1);
+        if not st_indx == miss();
+            for j(1, N_Vars, 1);
+                missings_mat[i, j] = counts(data[st_indx[i]:end_indx[i], varlist[j]], miss());
+            endfor;
+        endif;
+    endfor;
+    
+    // Create results DF
+    missing_df = asDF(missings_mat);
+    missing_df = asDF(grp_names, "Country")~setColNames(missing_df, varlist);
+    
+    retp(missing_df);
+endp;
+
+proc (1) = pdTimeSpans(data, datevar, groupvar, ...);
+    local grp_names, keys, N_groups, varlist, date_fmt, dates_mat, dates_df, st_indx, end_indx;
+    
+    // Check for varlist
+    varlist = dynargsGet(1,"");
+    
+    if not isempty(varlist);
+        retp(__pdTimeSpans_Vars(data, datevar, groupvar, varlist));
+    else;
+        // Get column labels
+        { grp_names, keys } = getColLabels(data, groupvar);
+        N_groups = rows(grp_names);
+        
+        // Get date format
+        date_fmt = getcoldateformats(data, datevar);
+        
+        // Get indices
+        st_indx = indnv(grp_names, data[., groupvar], 1);
+        end_indx = (st_indx[2:rows(st_indx)]-1)|rows(data);
+        
+        // Loop over groups
+        dates_mat = aggregate(data[., groupvar datevar], "min", groupvar);
+        dates_mat = outerJoin(dates_mat, groupvar, aggregate(data[., groupvar datevar], "max", groupvar), groupvar);
+        
+        retp(setColNames(dates_mat, groupvar$|"Start Date"$|"End Date"));
+    endif;
+    
+endp;
+
+proc (1) = __pdTimeSpans_Vars(data, datevar, groupvar, varlist);
+    local N_groups, grp_names, keys, date_fmt, N_vars, st_indx, end_indx, dates_mat,
+    tmp_max, tmp_data, tmp_min;
+    
+    // Get column labels
+    { grp_names, keys } = getColLabels(data, groupvar);
+    N_groups = rows(grp_names);
+    
+    // Get date format
+    date_fmt = getcoldateformats(data, datevar);
+    
+    // Get number of variables
+    N_vars = rows(varlist);
+    
+    // Get indices
+    st_indx = indnv(grp_names, data[., groupvar], 1);
+    end_indx = (st_indx[2:rows(st_indx)]-1)|rows(data);
+    
+    // Create initial dates_mat
+    dates_mat = aggregate(data[., groupvar datevar], "min", groupvar);
+    dates_mat = outerJoin(dates_mat, groupvar, aggregate(data[., groupvar datevar], "max", groupvar), groupvar);
+    
+    // Loop over groups
+    for i(1, N_vars, 1);
+        tmp_data = delcols(packr(data[., groupvar datevar varlist[i]]), 3);
+        tmp_min = setColNames(aggregate(tmp_data, "min", groupvar), groupvar$|(varlist[i]$+" Start"));
+        tmp_max = setColNames(aggregate(tmp_data, "max", groupvar), groupvar$|(varlist[i]$+" End"));
+        dates_mat = outerJoin(dates_mat, groupvar, tmp_min);
+        dates_mat = outerJoin(dates_mat, groupvar, tmp_max);
+    endfor;
+    
+    retp(dates_mat);
+    
+endp;
+
+proc (0) = plotCABData(data, time_var, group_var, reg_var, spath);
+    local grp_names, keys, e, tmp_data, tmp_date, plotname;
+    
+    // Get column labels 
+    { grp_names, keys } = getColLabels(data, group_var);
+    
+    struct plotControl ctl;
+    ctl = plotGetDefaults("xy");
+    
+    // Create plots
+    for i(1, rows(grp_names), 1);
+    
+    // Select data for country
+    e = data[., group_var] .== grp_names[i];
+    tmp_data = selif(data[., reg_var], e);
+    tmp_date = selif(data[., time_var], e);
+
+    // Graph title
+    plotSetTitle(&ctl, grp_names[i], "Arial", 18);
+    
+    // Legend
+    plotsetLegend(&ctl, reg_var, "outside bottom hcenter", 0);
+    plotXY(ctl, tmp_date, tmp_data);
+     
+    // Save plot
+    plotname = spath $+ grp_names[i] $+ "_" $+ "reg_var" $+ ".png";
+    plotSave(plotname, 800|600, "px");
+    
+    // New window
+    plotOpenWindow();
+
+    endfor;
+endp;
+
+proc (1) = getCABSummary(reg_data, time_var, group_var, interest_var);
+    local sum_table, fmt, mean_ca, min_ca, max_ca, sd_ca, tmp_data, start_date, end_date, count_obs;    
+    
+    // Get variables and sort data
+    reg_data = sortc(reg_data, group_var$|time_var);
+    
+    
+    mean_ca = asDF(aggregate(reg_data[., interest_var group_var], "mean", group_var), "country", "Mean CAB/GDP%");
+    min_ca =  asDF(aggregate(reg_data[., interest_var group_var], "min", group_var), "country", "Min CAB/GDP%");
+    max_ca =  asDF(aggregate(reg_data[., interest_var group_var], "max", group_var), "country", "Max CAB/GDP%");
+    sd_ca =  asDF(aggregate(reg_data[., interest_var group_var], "sd", group_var), "country", "SD CAB/GDP%");
+
+    // Remove missing values to get accurate counts
+    // and time ranges
+    tmp_data = packr(reg_data[., interest_var time_var group_var]);
+    start_date = asDF(aggregate(tmp_data[., time_var group_var], "min", group_var), "country", "Start Date");
+    end_date = asDF(aggregate(tmp_data[., time_var group_var], "max", group_var), "country", "End Date");
+    
+    // Count observations by group
+    count_obs = counts(tmp_data[., group_var], unique(tmp_data[., group_var])); 
+
+    sum_table = mean_ca~sd_ca[., 2]~min_ca[., 2]~max_ca[., 2]~start_date[., 2]~end_date[., 2]~asDF(count_obs, "N");
+    
+    fmt = "%15s%15.4f%15s%15d";
+    sprintf("%15s", getcolnames(sum_table)');
+    sprintf(fmt, mean_ca[.,1], mean_ca[., 2]~sd_ca[., 2]~min_ca[., 2]~max_ca[., 2], start_date[., 2]~end_date[., 2], asDF(count_obs, "N"));
+    
+    retp(sum_table);
+endp;
+
+proc (3) = plotGetPeriodCABMean(data, interest_var, time_var, date1, date2);
+    local tmp_data, mean, dts, t;
+    
+    
+    if date1 $== "";
+        tmp_data = selif(data, data[., time_var] .< date2);
+    elseif date2 $== "";
+        tmp_data = selif(data, data[., time_var] .>= date1);
+    else;
+        tmp_data = selif(data, data[., time_var] .>= date1 .and data[., time_var] .<date2);
+    endif;
+    
+    // Get period mean
+    mean = meanc(tmp_data[., interest_var]);
+    
+    dts = unique(tmp_data[., time_var]);
+    t = rows(dts);
+    
+    retp(mean, dts, t);
+endp;

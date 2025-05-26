@@ -1,0 +1,74 @@
+/*
+**   This file uses the CMLMT app to estimate
+**   the second stage mnl model of regimes 
+**
+**   Candidate independent variables:
+**         - Fixed regime dummy (reg2data[., "fixed"])
+**         - Flexible regime dummy (reg2data[., "flexible"])
+**         - Trade openness (reg2data[., "opn"])
+**         - Financial openness (reg2data[., "ka_open"])
+**         - Size of CAB three-year total accumulation of CAB
+**         - Dummy for deficits based on three year accumulation
+**         - Exchange rate misalignment sum of the absolute values of the deviations over t – 3 through t – 1 
+**         - Three year budget balance accumulation
+**         - Financial development private the long-run, HP-filtered trend of credit creation (reg2data[., "fd"] ? IMF index)
+**         - International Reserves Holding (reg2data[., "res"])
+**         - Relative per capita income level (to the US) from the PWT (reg2data[., "rypc_ppp"])
+**         - Growth rate of real GDP as a proxy for (future) productivity growth (reg2data[., "ryg"])
+**         - Net Foreign Asset Position (reg2data[., "nfa"])
+**         - Currency crisis dummy (reg2data[., "currency"])
+**         - Commodity or Manufacturing Exporter (reg2data[., "comd_d"], reg2data[., "manuf"].>0.5)
+*/
+
+library cmlmt;
+
+/*
+** Data loading
+*/
+
+struct PV p0;
+p0 = pvPack(pvCreate,1,"b0");
+p0 = pvPack(p0,1|1|1,"b");
+p0 = pvPack(p0,1,"variance");
+
+/*
+** Control structure for CMLMT maximizations
+*/
+struct cmlmtControl c0;
+c0 = cmlmtcontrolcreate;
+
+c0.title = "MNL CAB Regime Estimations";
+
+struct cmlmtResults out;
+out = cmlmt(&lpr, p0, x, y, c0);
+
+call cmlmtPrt(out);
+/*
+** Define the log-likelihood procedure for 
+** the multinomial logit model
+*/
+proc lpr(par, x, y, NObs, Ncats);
+    local i, j, k, logL, numerator, denominator, P;
+
+    logL = 0;
+
+    for i(1, Nobs, 1);
+        denominator = 0;
+        
+        for k(1, Ncats, 1);
+            denominator = denominator + exp(x[i, .] * par[., k]);
+        endfor;
+        
+        for j(1, Ncats, 1);
+            if y[i] == j;
+                numerator = exp(x[i, .] * par[., j]);
+                logL = logL + ln(numerator / denominator);
+            endif;
+        endfor;
+    endfor;
+
+    retp(logL);
+    
+endp;
+
+

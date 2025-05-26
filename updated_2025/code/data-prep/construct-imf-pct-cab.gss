@@ -1,0 +1,118 @@
+/*
+** Load individual files
+** This data is NOT seasonally adjusted
+** It generates and saves a wide panel to 
+** be sent for seasonal adjustment.
+*/
+
+
+/********* OECD Data *************/
+// Specify data directory
+data_dir = "C:/Users/eclow/Documents/GitHub/cab-persistency/updated_2025/data";
+save_dir = "C:/Users/eclow/Documents/GitHub/cab-persistency/updated_2025/results/data-summaries";
+
+/****************CN Data*****************/
+cn_list = loadd(data_dir $+ "/cnlist_complete.xls");
+cn_list[., "ccode"] = strreplace(cn_list[., "ccode"], "ROM", "ROU");
+
+/*
+** First load IMF data: CAB in domestic currency 
+** IMF.STA:BOP(20.0.0).DEU.NETCD_T.CAB.XDC.Q
+*/
+fname_gdp = "/oecd_gdp_dom_curr_nadj.csv";
+fname_gdp_sa = "/oecd_gdp_dom_curr_sa.csv";
+
+// Load non-adjusted
+gdp_dom_curr = loadd(data_dir $+ fname_gdp);
+gdp_dom_curr[., "Date"] = asdate(gdp_dom_curr[., "Date"], "%Y-Q%q");
+
+
+/*
+** Next load exchange rate data: Dom currency/USD
+** IMF.STA:ER(4.0.1).XDC_USD.PA_RT.Q
+*/
+fname_er = "/oecd_er_raw.csv";
+er = loadd(data_dir $+ fname_er);
+
+// Convert to long
+columns = trimr(getColNames(er), 1, 0);
+
+// Names to
+names_to = "Date";
+
+// Values to
+values_to = "er_usd";
+
+er_longer = dfLonger(er, columns, names_to, values_to);
+
+// Convert dates column 
+er_longer[., "Date"] = asdate(er_longer[., "Date"], "%Y_Q%q");
+er_longer = asdate(move(er_longer), "%Y-Q%q", "Date");
+er_longer = sortmc(er_longer, "Country"$|"Date");
+
+// Need to merge by country and date
+// Use left join because we want to use GDP data
+gdp_er_data = outerJoin(gdp_dom_curr, "Country"$|"Date", er_longer, "Country"$|"Date");
+
+// Convert GDP to USD
+gdp_usd = asDF(gdp_er_data[., "GDP"]./gdp_er_data[., "er_usd"], "gdp_usd");
+gdp_usd = gdp_er_data[., "Country" "Date" "ccode"]~gdp_usd~gdp_er_data[., "GDP"]~gdp_er_data[., "er_usd"];
+gdp_usd = packr(gdp_usd);
+
+/*
+** Load CAB data from IMF, USD
+** IMF.STA:BOP(20.0.0).NETCD_T.CAB.USD.Q
+*/
+fname_cab = "/imf_cab_quarterly_usd.csv";
+cab_usd = loadd(data_dir $+ fname_cab);
+cab_usd = cab_usd[., "Country" "1950_Q1" "1950_Q2" "1950_Q3" "1950_Q4" "1951_Q1" "1951_Q2" "1951_Q3" "1951_Q4" "1952_Q1" "1952_Q2" "1952_Q3" "1952_Q4" "1953_Q1" "1953_Q2" "1953_Q3" "1953_Q4" "1954_Q1" "1954_Q2" "1954_Q3" "1954_Q4" "1955_Q1" "1955_Q2" "1955_Q3" "1955_Q4" "1956_Q1" "1956_Q2" "1956_Q3" "1956_Q4" "1957_Q1" "1957_Q2" "1957_Q3" "1957_Q4" "1958_Q1" "1958_Q2" "1958_Q3" "1958_Q4" "1959_Q1" "1959_Q2" "1959_Q3" "1959_Q4" "1960_Q1" "1960_Q2" "1960_Q3" "1960_Q4" "1961_Q1" "1961_Q2" "1961_Q3" "1961_Q4" "1962_Q1" "1962_Q2" "1962_Q3" "1962_Q4" "1963_Q1" "1963_Q2" "1963_Q3" "1963_Q4" "1964_Q1" "1964_Q2" "1964_Q3" "1964_Q4" "1965_Q1" "1965_Q2" "1965_Q3" "1965_Q4" "1966_Q1" "1966_Q2" "1966_Q3" "1966_Q4" "1967_Q1" "1967_Q2" "1967_Q3" "1967_Q4" "1968_Q1" "1968_Q2" "1968_Q3" "1968_Q4" "1969_Q1" "1969_Q2" "1969_Q3" "1969_Q4" "1970_Q1" "1970_Q2" "1970_Q3" "1970_Q4" "1971_Q1" "1971_Q2" "1971_Q3" "1971_Q4" "1972_Q1" "1972_Q2" "1972_Q3" "1972_Q4" "1973_Q1" "1973_Q2" "1973_Q3" "1973_Q4" "1974_Q1" "1974_Q2" "1974_Q3" "1974_Q4" "1975_Q1" "1975_Q2" "1975_Q3" "1975_Q4" "1976_Q1" "1976_Q2" "1976_Q3" "1976_Q4" "1977_Q1" "1977_Q2" "1977_Q3" "1977_Q4" "1978_Q1" "1978_Q2" "1978_Q3" "1978_Q4" "1979_Q1" "1979_Q2" "1979_Q3" "1979_Q4" "1980_Q1" "1980_Q2" "1980_Q3" "1980_Q4" "1981_Q1" "1981_Q2" "1981_Q3" "1981_Q4" "1982_Q1" "1982_Q2" "1982_Q3" "1982_Q4" "1983_Q1" "1983_Q2" "1983_Q3" "1983_Q4" "1984_Q1" "1984_Q2" "1984_Q3" "1984_Q4" "1985_Q1" "1985_Q2" "1985_Q3" "1985_Q4" "1986_Q1" "1986_Q2" "1986_Q3" "1986_Q4" "1987_Q1" "1987_Q2" "1987_Q3" "1987_Q4" "1988_Q1" "1988_Q2" "1988_Q3" "1988_Q4" "1989_Q1" "1989_Q2" "1989_Q3" "1989_Q4" "1990_Q1" "1990_Q2" "1990_Q3" "1990_Q4" "1991_Q1" "1991_Q2" "1991_Q3" "1991_Q4" "1992_Q1" "1992_Q2" "1992_Q3" "1992_Q4" "1993_Q1" "1993_Q2" "1993_Q3" "1993_Q4" "1994_Q1" "1994_Q2" "1994_Q3" "1994_Q4" "1995_Q1" "1995_Q2" "1995_Q3" "1995_Q4" "1996_Q1" "1996_Q2" "1996_Q3" "1996_Q4" "1997_Q1" "1997_Q2" "1997_Q3" "1997_Q4" "1998_Q1" "1998_Q2" "1998_Q3" "1998_Q4" "1999_Q1" "1999_Q2" "1999_Q3" "1999_Q4" "2000_Q1" "2000_Q2" "2000_Q3" "2000_Q4" "2001_Q1" "2001_Q2" "2001_Q3" "2001_Q4" "2002_Q1" "2002_Q2" "2002_Q3" "2002_Q4" "2003_Q1" "2003_Q2" "2003_Q3" "2003_Q4" "2004_Q1" "2004_Q2" "2004_Q3" "2004_Q4" "2005_Q1" "2005_Q2" "2005_Q3" "2005_Q4" "2006_Q1" "2006_Q2" "2006_Q3" "2006_Q4" "2007_Q1" "2007_Q2" "2007_Q3" "2007_Q4" "2008_Q1" "2008_Q2" "2008_Q3" "2008_Q4" "2009_Q1" "2009_Q2" "2009_Q3" "2009_Q4" "2010_Q1" "2010_Q2" "2010_Q3" "2010_Q4" "2011_Q1" "2011_Q2" "2011_Q3" "2011_Q4" "2012_Q1" "2012_Q2" "2012_Q3" "2012_Q4" "2013_Q1" "2013_Q2" "2013_Q3" "2013_Q4" "2014_Q1" "2014_Q2" "2014_Q3" "2014_Q4" "2015_Q1" "2015_Q2" "2015_Q3" "2015_Q4" "2016_Q1" "2016_Q2" "2016_Q3" "2016_Q4" "2017_Q1" "2017_Q2" "2017_Q3" "2017_Q4" "2018_Q1" "2018_Q2" "2018_Q3" "2018_Q4" "2019_Q1" "2019_Q2" "2019_Q3" "2019_Q4" "2020_Q1" "2020_Q2" "2020_Q3" "2020_Q4" "2021_Q1" "2021_Q2" "2021_Q3" "2021_Q4" "2022_Q1" "2022_Q2" "2022_Q3" "2022_Q4" "2023_Q1" "2023_Q2" "2023_Q3" "2023_Q4" "2024_Q1" "2024_Q2" "2024_Q3" "2024_Q4" "2025_Q1"];
+
+// Convert to long data
+columns = trimr(getColNames(cab_usd), 1, 0);
+
+// Names to
+names_to = "Date";
+
+// Values to
+values_to = "cab_usd";
+
+// Convert to long
+cab_longer = dfLonger(cab_usd, columns, names_to, values_to);
+
+// Sort
+cab_longer = sortmc(cab_longer, "Country"$|"Date");
+
+// Set date
+cab_longer[., "Date"] = asdate(cab_longer[., "Date"], "%Y_Q%q");
+cab_longer = asdate(move(cab_longer), "%Y-Q%q", "Date");
+
+/********** Merge dataframes *******************/
+cab_longer = outerJoin(cab_longer, "Country"$|"Date", gdp_usd, "Country"$|"Date", "full");
+
+// Remove missings
+cab_longer = packr(cab_longer);
+
+// Generate percentage
+compute_pct_cab = asDF(cab_longer[., "cab_usd"]./cab_longer[., "gdp_usd"]*100, "computed_pct_cab");
+
+cab_longer = cab_longer~compute_pct_cab;
+
+// Merge with cn groups and keep 
+pct_cab_computed = outerJoin(cab_longer[., "Date" "ccode" "computed_pct_cab"], "ccode", cn_list, "ccode");
+pct_cab_computed = order(pct_cab_computed, "country_name"$|"cn"$|"ccode");
+
+// Save
+saved(pct_cab_computed, data_dir $+ "/pct_cab_computed.gdat");
+
+/*
+** Convert to wide for SA
+*/
+// Specify columns to pull new column names from
+names_from = "country_name";
+
+// Specify columns to pull new column values from
+values_from = "computed_pct_cab";
+
+// Convert to wide form
+pct_cab_computed_wide = dfWider(pct_cab_computed[., "country_name" "Date" "computed_pct_cab"], names_from, values_from);
+saved(pct_cab_computed_wide, data_dir $+ "/pct_cab_computed_wide.csv");

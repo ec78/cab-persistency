@@ -1,0 +1,47 @@
+new;
+cls;
+
+/*
+** Load data
+*/
+// Data loading path
+root = "C:/Users/eclow/Documents/GitHub/cab-persistency/";
+fpath1 = root $+ "updated_2025/results/unit-root-tests/switch";
+fpath0 = root $+ "updated_2025/code/markov-switching/switching_jason";
+
+/*
+** Coeffs, se, and tstats
+*/
+// Load 'coeffs.gdat' from both versions
+coeff_0 = loadd(fpath0 $+ "/coeffs.gdat");
+coeff_1 = loadd(fpath1 $+ "/coeffs1.gdat");
+coeff_total = coeff_0 + coeff_1;
+
+// Load 'tstat.gdat' from both versions
+tstat_0 = loadd(fpath0 $+ "/tstats.gdat");
+tstat_1 = loadd(fpath1 $+ "/tstats1.gdat");
+tstat_total = tstat_0 + tstat_1;
+
+// Load 'se.gdat' from both versions
+se_0 = loadd(fpath0 $+ "/se.gdat");
+se_1 = loadd(fpath1 $+ "/se1.gdat");
+se_total = se_0 + se_1;
+
+/*
+** Phi estimates
+*/
+// Load 'phi_estimates' from both versions
+phi_0 = loadd(fpath0 $+ "/phi_estimates.csv");
+phi_1 = loadd(fpath1 $+ "/phi_estimates1.csv");
+
+phi_total = phi_0[., 2:cols(phi_0)] + phi_1[., 2:cols(phi_1)];
+
+/*
+** Probabilities
+*/
+filestr0 = fpath0$+"/probs";
+filestr1 = fpath1$+"/probs1";
+loadarray probs_0 = ^filestr0;
+loadarray probs_1 = ^filestr1;
+
+probs_total = probs_0 + probs_1;
