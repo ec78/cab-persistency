@@ -1,0 +1,154 @@
+new;
+cls;
+
+#include code/cab_util.src
+
+// Data loading path
+fpath = "data/";
+fpath_probs = "code/markov-switching/switching_jason/";
+
+// Coefficient estimates
+fname_results = "ms-estimates-new.csv";
+fname_cab = "clean-data/reg_cab_data.csv";
+fname_probs = "probs_total.fmt";
+fname_grp_dummies = "imf_groupings.xlsx";
+
+// Results saving paths
+spath = "clean-data/";
+
+// Variables of interest
+group_var = "cn";
+group_names = "country_name";
+datevar = "Date";
+interest_var = "pct_cab";
+
+/*********************************************
+** Load data
+*********************************************/
+// Results data
+results_data = loadd(fpath$+fname_results);
+
+// CAB data
+cab_data = loadd(fname_cab);
+cab_data = asdate(move(cab_data), "%Y-Q%q", datevar);
+
+// Group dummies
+grp_dummies = loadd(fpath$+fname_grp_dummies);
+grp_dummies[., "Country"] = lower(grp_dummies[., "Country"]);
+
+// Probabilities
+filestr = fpath_probs $+ fname_probs;
+loadarray probs = ^filestr;
+
+/*********************************************
+** Create dummy variables for regimes
+**********************************************/
+
+// Get unique country codes
+ccodes = unique(cab_data[., group_var]);
+
+// Get column labels
+{ cnames, keys } = getColLabels(cab_data, group_names);
+N_groups = rows(cnames);
+
+// Column labels from results
+resCols = getColNames(results_data);
+hypothesis_cols = startsWith(resCols, "reject");
+resCols = selif(resCols, hypothesis_cols);
+hypothesis = results_data[., resCols];
+
+// Recode category data
+// 0 is missing (blank)
+// 1 is FALSE
+// 2 is TRUE 
+r1_cat = zeros(rows(hypothesis), 1);
+r0_cat = where(hypothesis[., 1].=="TRUE", 1, 2) + where(hypothesis[., 2].=="TRUE", 1, 0);
+r1_cat = where(hypothesis[., 3].=="TRUE", 1, 2) + where(hypothesis[., 4].=="TRUE", 1, 0);
+
+// Storage array for regimes
+regimes = {};
+
+for i(1, N_groups, 1);
+    
+    // Load CAB data
+    //  CAB
+    //  Dates
+    //  Country name
+    yt = __get_test_y_w_country(cab_data, cnames[i], group_names, group_var, datevar, interest_var);
+    
+    // Trim column with CAB and keep
+    // country and dates
+    // yt = delcols(yt, interest_var);
+    
+    // Get probabilities from array
+    // and collapse into matrix
+    prob_i = getMatrix(probs, i);
+    
+    // Get column 4 from probability which
+    // is probability for S3 for phi 
+    prob_i = prob_i[., 4];
+    
+    // Trim to match time span of yt data
+    // must be done because of different data ranges
+    prob_i = trimr(prob_i, 0, rows(prob_i)-rows(yt));
+    
+    /*
+    ** Create annual regime indicator
+    */
+    // Create 0/1 indicator quarterly of phi regime based on S_3 
+    //     0            Regime 0
+    //     1            Regime 1
+    // also add year of date variable for aggregation
+    regime_i = yt[., group_names group_var interest_var ]~dtYear(yt[., datevar])~(prob_i .> 0.5);
+    
+    // Aggregate to find mean regime
+    regime_i = aggregate(regime_i, "mean", 4);
+    
+    // Recode annual regime indicator to be 1 
+    // if 2 or more quarters in regime 1
+    //          0         Less than 2 quarters in regime 1
+    //          1         2 or more quarters in regime 1
+    regime_i[., 5] = where(regime_i[., 5].>=0.5, 1, 0);
+    
+    // Use unit root test results to categorize regimes
+    //        1              Stationary
+    //        2              Unit root  
+    //        3              Explosive  
+    regime_type = asDF(regime_i[., 5]*r1_cat[i , 1] + (1 - regime_i[., 5])*r0_cat[i , 1], "Regime Type");
+    
+    // Store regimes 
+    if i == 1;
+        regimes = regime_i~regime_type;
+    else;
+        regimes = dfAppend(regimes, regime_i~regime_type);
+    endif;
+    
+endfor;
+
+// Set up dataframe
+regimes = setColNames(regimes, "Year"$|"Regime", 1|5);
+
+// Change column types
+regimes = dftype(move(regimes), META_TYPE_CATEGORY, group_names);
+regimes = dftype(move(regimes), META_TYPE_CATEGORY, "Regime");
+regimes = dftype(move(regimes), META_TYPE_CATEGORY, "Regime Type");
+
+// Reclassify regime type for clarity
+regimes = setcollabels(move(regimes), "Stationary"$|"Unit root"$|"Explosive", seqa(0, 1, 3), "Regime Type");
+
+/*
+** Merge with phi data
+*/
+regimes = outerJoin(regimes, "country_name", results_data[., "Country" "Phi0" "Phi1"], "Country");
+
+// Create current phi
+regimes = regimes~asDF(((1-regimes[., "Regime"]).*regimes[., "Phi0"] + regimes[., "Regime"].*regimes[., "Phi1"]), "current_phi");  
+
+/*
+** Merge with group dummies
+*/
+regimes = outerJoin(regimes, "country_name", grp_dummies, "Country");
+
+// Save data
+saved(regimes, spath $+ "regimes_summary.gdat");
+saved(regimes, spath $+ "regimes_summary.csv"); 

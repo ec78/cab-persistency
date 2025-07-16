@@ -130,17 +130,23 @@ proc (1) = __get_test_y(data, cname);
     retp(y_test);
 endp;
 
-proc (1) = __get_test_y_w_country(data, cname);
-    local e, tmp_data, y_test;
+proc (1) = __get_test_y_w_country(data, cname, ...);
+    local e, tmp_data, y_test, group_names, group_var, datevar, interest_var;
+    
+    // Get variables of interest
+    group_names = dynargsGet(1, "Country");
+    group_var = dynargsGet(2, "cn");
+    datevar = dynargsGet(3, "date2");
+    interest_var = dynargsGet(4, "pct_ca_reg");
     
     // Select data for country
-    e = data[., "Country"] .== cname;
+    e = data[., group_names] .== cname;
     
     // Get test data
-    tmp_data = selif(data[., "Country" "cn" "ccode" "date2" "pct_ca_reg"], e);
+    tmp_data = selif(data[., group_names group_var datevar interest_var], e);
     
     // Get CAB for country
-    y_test = packr(tmp_data[., "Country" "cn" "ccode" "date2" "pct_ca_reg"]);
+    y_test = packr(tmp_data[., group_names group_var datevar interest_var]);
     
     retp(y_test);
 endp;

@@ -67,7 +67,6 @@ tstats = zeros(20, N_groups);
 ** Errors out at Colombia and China
 ** Chile is country #14
 */
-
 for i(1, N_groups, 1);
     if i!=15;
     // Select individual series
@@ -266,15 +265,15 @@ __save_estimates(coeffs, se, tstats, cnames, spath, probs);
 
 proc (0) = __save_estimates(coeffs, se, tstats, cnames, spath, probs);
 
-    // Make DFs
-    coeffs = setColNames(coeffs, cnames);
-    se = setColNames(se, cnames);
-    tstats = setColNames(tstats, cnames);
+//    // Make DFs
+//    coeffs = setColNames(coeffs, cnames);
+//    se = setColNames(se, cnames);
+//    tstats = setColNames(tstats, cnames);
     
-    // Save DFs
-    saved(coeffs, spath$+"coeffs.gdat");
-    saved(se, spath$+"se.gdat");
-    saved(tstats, spath$+"tstats.gdat");
+//    // Save DFs
+//    saved(coeffs, spath$+"coeffs.gdat");
+//    saved(se, spath$+"se.gdat");
+//    saved(tstats, spath$+"tstats.gdat");
     
     // Save probability array
     save results/unit-root-tests/switch/probs = probs;
@@ -562,4 +561,12 @@ proc(1) = __get_ar_covmat(whiten, kernel, bandw, gr, opg);
     oh = covariance_mat(gr, opg, scm, te, fls, bande, kernel, whiten);
     
     retp(oh);
+endp;
+
+proc (1) = __get_start_values(yt, yu, dya);
+    local zz;
+    
+     zz = yu[4:na-1, 1]~dya[4:na-1, 1]~dya[3:na-2, 1]~dya[2:na-3, 1]~dya[1:na-4, 1];
+    
+    
 endp;
