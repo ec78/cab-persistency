@@ -12,7 +12,7 @@ fpath = root $+ "updated_2025/code/markov-switching/switching_jason/";
 fname = "reg_cab_data.csv";
 
 // Coefficient estimates
-fname_coeff = "coeffs_total.gdat";
+fname_coeff = "coeffs_totals.gdat";
 fname_se = "se_total.gdat";
 fname_tstats = "tstats_total.gdat";
 
@@ -60,7 +60,7 @@ pBoot1Expl = zeros(N_groups, 2);
 /*
 ** Settings for replication
 */
-nrepl = 10000;
+nrepl = 1000;
 kk = 1;
 TBoot0 = zeros(2, N_groups);
 TBoot1 = zeros(2, N_groups);
@@ -75,10 +75,10 @@ x_mat = sqrt(coeffs[3:8, .]./(1-coeffs[3:8, .]));
         
 // Loop through each country
 // N_groups = [fill in here to limit number of groups];
-for i(3, N_groups, 1);
-    // Skip Chile and China for now
-    // looking into this
-    if i!=15 and i!=16;
+i_mat = {15, 16, 73};
+N_groups = rows(i_mat);
+for j(1, N_groups, 1);
+    i = i_mat[j]; 
         if i == 1;
             append = 0;
         else;
@@ -288,7 +288,7 @@ for i(3, N_groups, 1);
         
         ret = csvWriteM(i~Pboot0Expl[i, .], file0, sep, prec, append);
         ret = csvWriteM(i~Pboot1Expl[i, .], file1, sep, prec, append);
-    endif;
+//    endif;
 endfor;
 
 proc (6) = __boot_get_dummies(yx);

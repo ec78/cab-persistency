@@ -5,15 +5,24 @@ cls;
 
 // Data loading path
 fpath = "data/";
-fpath_probs = "code/unit-root-testing/switching/switching_jason/";
+fpath_cab = "clean-data/";
+fpath_probs = "code/markov-switching/switching_jason/";
 
 // Coefficient estimates
-fname_results = "ms-estimates.csv";
-fname_cab = "reg_data.gdat";
-fname_probs = "probs.fmt";
+fname_results = "ms-estimates-new.csv";
+fname_cab = "reg_cab_data.csv";
+fname_probs = "probs_total.fmt";
 
 // Results saving paths
 spath = "results/unit-root-tests/switch/plots/summary/";
+
+/*
+** Specify variables
+*/
+date_var = "Date";
+group_var = "cn";
+group_names = "country_name";
+interest_var = "pct_cab";
 
 /*
 ** Perform import
@@ -22,18 +31,18 @@ spath = "results/unit-root-tests/switch/plots/summary/";
 results_data = loadd(fpath$+fname_results);
 
 // CAB data
-cab_data = loadd(fpath$+fname_cab);
-cab_data = asdate(move(cab_data), "%YQ%q", "date3");
+cab_data = loadd(fpath_cab$+fname_cab);
+cab_data = asdate(move(cab_data), "%Y-Q%q", date_var);
 
 // Probabilities
 filestr = fpath_probs $+ fname_probs;
 loadarray probs = ^filestr;
 
 // Get unique country codes
-ccodes = unique(cab_data[., "cn"]);
+ccodes = unique(cab_data[., group_var]);
 
 // Get column labels
-{ cnames, keys } = getColLabels(cab_data, "Country");
+{ cnames, keys } = getColLabels(cab_data, group_names);
 N_groups = rows(cnames);
 
 // Column labels from results
@@ -44,15 +53,15 @@ hypothesis = results_data[., resCols];
 
 // Recode category data
 r1_cat = zeros(rows(hypothesis), 1);
-r0_cat = where(hypothesis[., 1], 1, 2) + where(hypothesis[., 2], 1, 0);
-r1_cat = where(hypothesis[., 3], 1, 2) + where(hypothesis[., 4], 1, 0);
+r0_cat = where(hypothesis[., 1].=="TRUE", 1, 2) + where(hypothesis[., 2].=="TRUE", 1, 0);
+r1_cat = where(hypothesis[., 3].=="TRUE", 1, 2) + where(hypothesis[., 4].=="TRUE", 1, 0);
 
 for i(1, N_groups, 1);
     
     // Load CAB series
     yt = __get_test_y(cab_data, cnames[i]);
-    dates = yt[., "date2"];
-    yy = yt[., "pct_ca_reg"];
+    dates = yt[., date_var];
+    yy = yt[., interest_var];
     
     // Get probabilities
     prob_i = getMatrix(probs, i);

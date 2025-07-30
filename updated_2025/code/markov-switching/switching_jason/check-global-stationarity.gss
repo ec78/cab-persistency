@@ -11,11 +11,11 @@ cls;
 #include code/cab_util.src
 
 // Data loading path
-fpath = "code/unit-root-testing/switching/switching_jason/";
+fpath = "code/markov-switching/switching_jason/";
 spath = "results/unit-root-tests/switch/";
 
 // Coefficient estimates
-fname_cab = "coeffs.gdat";
+fname_cab = "coeffs_totals.gdat";
 sname = "global_test.csv";
 
 coeff = loadd(fpath $+ fname_cab);
@@ -50,6 +50,6 @@ saved(global_cond, spath $+ sname);
 plotCanvasSize("px", 800|600);
 
 plotFreq(global_cond, "Global Stationarity", 0, 1);
-plotAddFreqLabels(global_cond, "Global Stationarity", 0, 1);
+//plotAddFreqLabels(global_cond, "Global Stationarity", 0, 1);
 
 

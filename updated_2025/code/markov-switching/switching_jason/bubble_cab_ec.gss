@@ -67,8 +67,9 @@ tstats = zeros(20, N_groups);
 ** Errors out at Colombia and China
 ** Chile is country #14
 */
-for i(1, N_groups, 1);
-    if i!=15;
+N_groups = 51;
+for i(51, N_groups, 1);
+//    if i!=15;
     // Select individual series
     yt = __get_test_y(data, cnames[i]);
     dates = yt[., date_var];
@@ -88,6 +89,11 @@ for i(1, N_groups, 1);
     
     // Starting values
     x0 = 0.01|0.01|3|3|3|3|3|3|stdc(dya)|0.01|zeros(4, 1)|7*stdc(dya)|0.01|zeros(4, 1);
+    if i==15;
+        x0 = -0.007|-0.07|3|3|3|3|3|3|1.715|0.1|-0.22424|-0.07906|0.04932|-0.05875|1.715|0.5|-0.22424|-0.07906|0.04932|-0.05875;
+    elseif i==16;
+        x0 = 0.02|0.01|3|3|3|3|3|3|1.06965|0.1|-0.11718|0.00253|0.05509|-0.01272|1.715|0.5|-0.11718|0.00253|0.05509|-0.01272;
+    endif;
 
     // Include
     kc = 1;
@@ -255,8 +261,9 @@ for i(1, N_groups, 1);
         print "    Q(" ncor[ant] ") = " q "   [" marg " ]";
         ant = ant + 1;
     endo;
- endif;
+// endif;
 endfor;
+end;
 
 // Get results
 N_groups = rows(cnames);
@@ -265,15 +272,15 @@ __save_estimates(coeffs, se, tstats, cnames, spath, probs);
 
 proc (0) = __save_estimates(coeffs, se, tstats, cnames, spath, probs);
 
-//    // Make DFs
-//    coeffs = setColNames(coeffs, cnames);
-//    se = setColNames(se, cnames);
-//    tstats = setColNames(tstats, cnames);
+    // Make DFs
+    coeffs = setColNames(coeffs, cnames);
+    se = setColNames(se, cnames);
+    tstats = setColNames(tstats, cnames);
     
-//    // Save DFs
-//    saved(coeffs, spath$+"coeffs.gdat");
-//    saved(se, spath$+"se.gdat");
-//    saved(tstats, spath$+"tstats.gdat");
+    // Save DFs
+    saved(coeffs, spath$+"coeffs.gdat");
+    saved(se, spath$+"se.gdat");
+    saved(tstats, spath$+"tstats.gdat");
     
     // Save probability array
     save results/unit-root-tests/switch/probs = probs;
@@ -563,7 +570,7 @@ proc(1) = __get_ar_covmat(whiten, kernel, bandw, gr, opg);
     retp(oh);
 endp;
 
-proc (1) = __get_start_values(yt, yu, dya);
+proc (1) = __get_start_values(yt, yu, dya, na);
     local zz;
     
      zz = yu[4:na-1, 1]~dya[4:na-1, 1]~dya[3:na-2, 1]~dya[2:na-3, 1]~dya[1:na-4, 1];

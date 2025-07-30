@@ -1,0 +1,90 @@
+/************************************************
+Get starting values for models that haven't 
+converged using arimaSS
+
+************************************************/
+new;
+library tsmt;
+
+/*
+** Load data
+*/
+// Data loading path
+root = "C:/Users/eclow/Documents/GitHub/cab-persistency/";
+fpath = root $+ "updated_2025/clean-data/";
+
+// Data file
+fname = "reg_cab_data.csv";
+
+// Results saving paths
+spath = "results/unit-root-tests/switch/";
+
+spath_phi = "results/unit-root-tests/switch/plots/phi/";
+spath_mu = "results/unit-root-tests/switch/plots/mu/";
+spath_sigma = "results/unit-root-tests/switch/plots/sigma/";
+
+
+/*
+** Specify variables
+*/
+date_var = "Date";
+group_var = "cn";
+group_names = "country_name";
+interest_var = "pct_cab";
+/********************************************************/
+
+/*
+** Perform import
+*/
+data = loadd(fpath$+fname);
+data = asdate(move(data), "%Y-Q%q", date_var);
+
+// Get unique country codes
+ccodes = unique(data[., group_var]);
+
+// Get column labels
+{ cnames, keys } = getColLabels(data, group_names);
+N_groups = rows(cnames);
+
+// Model settings
+p = 4;
+d = 1;
+q = 0;
+
+trend = 0;
+const = 1;
+
+/*
+** Errors out at Colombia and China
+** Chile is country #14
+*/
+N_groups = 16;
+for i(15, N_groups, 1);
+   
+    // Select individual series
+    yt = __get_test_y(data, cnames[i]);
+    dates = yt[., date_var];
+    yt = yt[., interest_var];
+        
+        
+    // Declare 'amo' to be an arimamtOut structure
+    // to hold the estimation results and then
+    // estimate the model
+    struct arimamtOut amo;
+    amo = arimaSS(yt, p, d, q, trend, const);
+endfor;
+
+proc (1) = __get_test_y(data, cname);
+    local e, tmp_data, y_test;
+    
+    // Select data for country
+    e = data[., group_names] .== cname;
+    
+    // Get test data
+    tmp_data = selif(data[., date_var interest_var], e);
+    
+    // Get CAB for country
+    y_test = packr(tmp_data[., date_var interest_var]);
+    
+    retp(y_test);
+endp;
