@@ -1,0 +1,843 @@
+new;
+cls;
+
+#include code/cab_util.src 
+/****************************************************************
+** Data loading information
+****************************************************************/
+// Data loading path
+fpath = "data/";
+fpath_probs = "code/markov-switching/switching_jason/";
+
+// Coefficient estimates
+fname_results = "ms-estimates-new.csv";
+
+// Annual cabdata
+fname_cab = "cab_pct_annual.gdat";
+fname_regimes = "clean-data/regimes_summary.gdat";
+
+
+//fname_reg2;
+
+//// Results saving paths
+//fpath = "clean-data/";
+
+// Variables of interest
+groupvar = "cn";
+group_names = "country_name";
+datevar_1 = "Year";
+datevar_2 = "year";
+interest_var = "Pct CAB";
+
+
+// Results saving paths
+save_on = 1;
+spath = "results/data-summaries/plots/data-summaries-ii/";
+sfile1 = "regime-type-freq.png";
+sfile2 = "regime-type-country-groups.png";
+sfile3 = "regime-type-currency-groups.png";
+sfile3b = "regime-type-currency-groups-split.png";
+sfile4 = "regime-type-kaopen.png";
+sfile5 = "regime-type-commd.png";
+sfile6 = "regime-type-commd2.png";
+sfile7 = "nfa_quant.png";
+sfile7a = "idc_nfa_quant.png";
+sfile7b = "ldc_nfa_quant.png";
+
+/**************
+Load data
+****************/
+// Regime data
+regimes = loadd(fname_regimes);
+regimes = asDate(regimes, "%Y", datevar_1);
+
+// CAB data
+reg_2_data = loadd(fpath $+ fname_cab);
+
+// Merge the data 
+reg_2_data = outerJoin(reg_2_data, datevar_2$|group_names, regimes, datevar_1$|group_names);
+
+// Fill missing variables for all country groups
+// Iterate over countries
+// Set up asian and developing country indicator
+adc = (reg_2_data[., "ldc"] .== 1 .and reg_2_data[., "eap"] .== 1);
+reg_2_data = reg_2_data~asDF(adc, "adc");
+
+/*
+** Impute Country Group Variables
+*/
+string country_grps = { "idc", "ldc", "emg", "lac", "adc", "ez" };
+
+///*
+//** Check counts for variables of interest by country
+//*/
+//string var_interest = { "ka_open", "kaopen","fixed", "flexible", "nfa", "commd", "commd_i", "comd_d", "gsur", "gsur_18" };
+//miss_table = pdCountMissings(reg_2_data, var_interest, "Country");
+//saved(miss_table, spath $+ "missing_report.csv");
+
+/*
+** Get time spans
+*/
+//tspan_vars = pdTimeSpans(reg_2_data, datevar, "Country", interest_var);
+//saved(tspan_vars, spath $+ "time_span_vars.csv");
+
+/****************************************************************
+** Total sample
+** Basic summary statistics
+****************************************************************/
+// Regime type frequency
+plotCanvasSize("px", 600|400);
+
+frequency(reg_2_data, "Regime Type");
+plotFreq(reg_2_data, "Regime Type", 0, 1);
+plotAddFreqLabels(reg_2_data, "Regime Type", 0, 1);
+
+if save_on;
+    plotSave(spath $+ sfile1, 11|8.5, "in");
+endif;
+
+/****************************************************************
+** Regime frequency by country group
+****************************************************************/
+
+string gr_title = {"Industrialized Countries", "Developing Countries", "Emerging Countries",
+    "Latin American Countries", "Developing Asian Countries", "Euro Countries" };
+
+// Get Break Points
+{ labels, keys } = getColLabels(reg_2_data, "Regime Type");
+
+// Declare plotControl structure
+struct plotControl myPlt;
+myPlt = plotGetDefaults("bar");
+plotCanvasSize("fill");
+
+plotOpenWindow();
+for i(1, rows(country_grps), 1);
+    tst_data = selif(reg_2_data, reg_2_data[., country_grps[i]] .== 1);
+    
+    /*
+    ** Frequency plot of regime type
+    */
+    // Set title
+    plotSetTitle(&myPlt, gr_title[i]);
+    plotSetYRange(&myPlt, 0, 100);
+    
+    plotLayout(3, 2, i);
+    
+    // Frequency plot
+    // Draw histogram with default settings
+    plotFreq(myPlt, tst_data, "Regime Type", 0, 1);
+    plotAddFreqLabels(tst_data, "Regime Type", 0, 1);
+    
+endfor;
+
+if save_on;
+    plotSave(spath $+ sfile2, 11|8.5, "in");
+endif;
+
+/****************************************************************
+** Regime frequency by year
+***************************************************************/
+datevar = datevar_2;
+// Get  country count by year
+year = dtYear(reg_2_data[., datevar]);
+country_ct = asDf(unique(year)~counts(year, unique(year)), datevar, "Total");
+
+// Unit root regimes
+tmp = selif(reg_2_data, reg_2_data[., "Regime Type"] .== "Unit root");
+year = dtYear(tmp[., datevar]);
+unit_rt_count = asDf(unique(year)~counts(year, unique(year)), datevar, "No. Unit Root");
+
+// Stationary regimes
+tmp = selif(reg_2_data, reg_2_data[., "Regime Type"] .== "Stationary");
+year = dtYear(tmp[., datevar]);
+stationary_count = asDf(unique(year)~counts(year, unique(year)), datevar, "No. Stationary");
+
+// Explosive regimes
+tmp = selif(reg_2_data, reg_2_data[., "Regime Type"] .== "Explosive");
+year = dtYear(tmp[., datevar]);
+explosive_count = asDf(unique(year)~counts(year, unique(year)), datevar, "No. Explosive");
+
+// Merge together
+regime_counts = outerJoin(country_ct, datevar, stationary_count, datevar, "full");
+regime_counts = outerJoin(regime_counts, datevar, unit_rt_count, datevar, "full");
+regime_counts = outerJoin(regime_counts, datevar, explosive_count, datevar, "full");
+regime_counts = missrv(regime_counts, 0);
+
+prct_counts = regime_counts[., 3 4 5]./regime_counts[., 2];
+prct_counts = setColNames(prct_counts, "Pct. Stationary"$|"Pct. Unit Root"$|"Pct. Explosive");
+
+regime_counts = regime_counts~prct_counts;
+
+/*
+** Horizontal bar plot
+*/
+plotClearLayout;
+plotOpenWindow;
+
+struct plotControl plt;
+plt = plotGetDefaults("bar");
+
+// Set up stacked bar
+plotSetBar(&plt, 1, 1);
+
+// Turn on legend
+plotSetLegend(&plt, "Stationary"$|"Unit Root"$|"Explosive");
+
+// Turn on title
+plotSetTitle(&plt, "Percentage of Country By Regime Type");
+plotBarH(plt, regime_counts[., datevar], regime_counts[., 6 7 8]);
+
+/****************************************************************
+** Regime frequency by year and positive or negative CAB
+***************************************************************/
+
+/*
+* Positive CAB
+*/
+// Split to positive group
+pos_cab_grp = selif(reg_2_data, reg_2_data[., interest_var] .> 0);
+
+// Get  country count by year
+year = dtYear(pos_cab_grp[., datevar]);
+pos_country_ct = asDf(unique(year)~counts(year, unique(year)), datevar, "Total");
+
+// Unit root regimes
+tmp = selif(pos_cab_grp, pos_cab_grp[., "Regime Type"] .== "Unit root");
+year = dtYear(tmp[., datevar]);
+pos_unit_rt_count = asDf(unique(year)~counts(year, unique(year)), datevar, "No. Unit Root");
+
+// Stationary regimes
+tmp = selif(pos_cab_grp, pos_cab_grp[., "Regime Type"] .== "Stationary");
+year = dtYear(tmp[., datevar]);
+pos_stationary_count = asDf(unique(year)~counts(year, unique(year)), datevar, "No. Stationary");
+
+// Explosive regimes
+tmp = selif(pos_cab_grp, pos_cab_grp[., "Regime Type"] .== "Explosive");
+year = dtYear(tmp[., datevar]);
+pos_explosive_count = asDf(unique(year)~counts(year, unique(year)), datevar, "No. Explosive");
+
+// Merge together
+pos_regime_counts = outerJoin(pos_country_ct, datevar, pos_stationary_count, datevar);
+pos_regime_counts = outerJoin(pos_regime_counts, datevar, pos_unit_rt_count, datevar);
+pos_regime_counts = outerJoin(pos_regime_counts, datevar, pos_explosive_count, datevar);
+pos_regime_counts = missrv(pos_regime_counts, 0);
+
+pos_prct_counts = pos_regime_counts[., 3 4 5]./pos_regime_counts[., 2];
+pos_prct_counts = setColNames(pos_prct_counts, "Pct. Stationary"$|"Pct. Unit Root"$|"Pct. Explosive");
+
+pos_regime_counts =pos_regime_counts[., datevar]~pos_prct_counts;
+
+/*
+* Negative CAB
+*/
+// Split to positive group
+neg_cab_grp = selif(reg_2_data, reg_2_data[., interest_var] .< 0);
+
+// Get  country count by year
+year = dtYear(neg_cab_grp[., datevar]);
+neg_country_ct = asDf(unique(year)~counts(year, unique(year)), datevar, "Total");
+
+// Unit root regimes
+tmp = selif(neg_cab_grp, neg_cab_grp[., "Regime Type"] .== "Unit root");
+year = dtYear(tmp[., datevar]);
+neg_unit_rt_count = asDf(unique(year)~counts(year, unique(year)), datevar, "No. Unit Root");
+
+// Stationary regimes
+tmp = selif(neg_cab_grp, neg_cab_grp[., "Regime Type"] .== "Stationary");
+year = dtYear(tmp[., datevar]);
+neg_stationary_count = asDf(unique(year)~counts(year, unique(year)), datevar, "No. Stationary");
+
+// Explosive regimes
+tmp = selif(neg_cab_grp, neg_cab_grp[., "Regime Type"] .== "Explosive");
+year = dtYear(tmp[., datevar]);
+neg_explosive_count = asDf(unique(year)~counts(year, unique(year)), datevar, "No. Explosive");
+
+// Merge together
+neg_regime_counts = outerJoin(neg_country_ct, datevar, neg_stationary_count, datevar);
+neg_regime_counts = outerJoin(neg_regime_counts, datevar, neg_unit_rt_count, datevar);
+neg_regime_counts = outerJoin(neg_regime_counts, datevar, neg_explosive_count, datevar);
+neg_regime_counts = missrv(neg_regime_counts, 0);
+
+neg_prct_counts = neg_regime_counts[., 3 4 5]./neg_regime_counts[., 2];
+neg_prct_counts = setColNames(neg_prct_counts, "Pct. Stationary"$|"Pct. Unit Root"$|"Pct. Explosive");
+
+neg_regime_counts = neg_regime_counts[., datevar]~neg_prct_counts;
+
+
+/*
+** Horizontal bar plot
+*/
+plotClearLayout;
+plotOpenWindow;
+
+struct plotControl plt;
+plt = plotGetDefaults("bar");
+
+// Set up stacked bar
+plotSetBar(&plt, 1, 1);
+
+// Turn on legend
+plotSetLegend(&plt, "Stationary"$|"Unit Root"$|"Explosive");
+
+// Turn on title
+plotLayout(1, 2, 1);
+plotSetTitle(&plt, "Percentage of Negative CAB Countries By Regime Type");
+plotSetXRange(&plt, 0, 1);
+plotBarH(plt, neg_regime_counts[., datevar], neg_regime_counts[., 2 3 4]);
+
+struct plotControl plt2;
+plt2 = plotGetDefaults("bar");
+
+// Set up stacked bar
+plotLayout(1, 2, 2);
+plotSetBar(&plt2, 1, 1);
+plotSetXRange(&plt2, 0, 1);
+plotSetTitle(&plt2, "Percentage of Positive CAB Countries By Regime Type");
+plotBarH(plt2, pos_regime_counts[., datevar], pos_regime_counts[., 2 3 4]);
+
+/****************************************************************
+** Regime frequency by year and positive or negative CAB
+** and developing or developed
+***************************************************************/
+
+/*
+* Positive CAB
+*/
+/*
+* IDC
+*/
+// Split to positive group
+pos_cab_grp_idc = selif(reg_2_data, reg_2_data[., interest_var] .> 0 .and reg_2_data[., "idc"] .==1);
+pos_cab_grp_ldc = selif(reg_2_data, reg_2_data[., interest_var] .> 0 .and reg_2_data[., "ldc"] .==1);
+
+// Get  country count by year
+year_idc = dtYear(pos_cab_grp_idc[., datevar]);
+pos_country_ct_idc = asDf(unique(year_idc)~counts(year_idc, unique(year_idc)), datevar, "Total");
+
+// Unit root regimes
+tmp_idc = selif(pos_cab_grp_idc, pos_cab_grp_idc[., "Regime Type"] .== "Unit root");
+year_idc = dtYear(tmp_idc[., datevar]);
+pos_unit_rt_count_idc = asDf(unique(year_idc)~counts(year_idc, unique(year_idc)), datevar, "No. Unit Root");
+
+// Stationary regimes
+tmp_idc = selif(pos_cab_grp_idc, pos_cab_grp_idc[., "Regime Type"] .== "Stationary");
+year_idc = dtYear(tmp_idc[., datevar]);
+pos_stationary_count_idc = asDf(unique(year_idc)~counts(year_idc, unique(year_idc)), datevar, "No. Stationary");
+
+// Explosive regimes
+tmp_idc = selif(pos_cab_grp_idc, pos_cab_grp_idc[., "Regime Type"] .== "Explosive");
+year_idc = dtYear(tmp_idc[., datevar]);
+pos_explosive_count_idc = asDf(unique(year_idc)~counts(year_idc, unique(year_idc)), datevar, "No. Explosive");
+
+// Merge together
+pos_regime_counts_idc = outerJoin(pos_country_ct_idc, datevar, pos_stationary_count_idc, datevar);
+pos_regime_counts_idc = outerJoin(pos_regime_counts_idc, datevar, pos_unit_rt_count_idc, datevar);
+pos_regime_counts_idc = outerJoin(pos_regime_counts_idc, datevar, pos_explosive_count_idc, datevar);
+pos_regime_counts_idc = missrv(pos_regime_counts_idc, 0);
+
+pos_prct_counts_idc = pos_regime_counts_idc[., 3 4 5]./pos_regime_counts_idc[., 2];
+pos_prct_counts_idc = setColNames(pos_prct_counts_idc, "Pct. Stationary"$|"Pct. Unit Root"$|"Pct. Explosive");
+
+pos_regime_counts_idc = pos_regime_counts_idc[., datevar]~pos_prct_counts_idc;
+
+/*
+* LDC
+*/
+// Get  country count by year
+year_ldc = dtYear(pos_cab_grp_ldc[., datevar]);
+pos_country_ct_ldc = asDf(unique(year_ldc)~counts(year_ldc, unique(year_ldc)), datevar, "Total");
+
+// Unit root regimes
+tmp_ldc = selif(pos_cab_grp_ldc, pos_cab_grp_ldc[., "Regime Type"] .== "Unit root");
+year_ldc = dtYear(tmp_ldc[., datevar]);
+pos_unit_rt_count_ldc = asDf(unique(year_ldc)~counts(year_ldc, unique(year_ldc)), datevar, "No. Unit Root");
+
+// Stationary regimes
+tmp_ldc = selif(pos_cab_grp_ldc, pos_cab_grp_ldc[., "Regime Type"] .== "Stationary");
+year_ldc = dtYear(tmp_ldc[., datevar]);
+pos_stationary_count_ldc = asDf(unique(year_ldc)~counts(year_ldc, unique(year_ldc)), datevar, "No. Stationary");
+
+// Explosive regimes
+tmp_ldc = selif(pos_cab_grp_ldc, pos_cab_grp_ldc[., "Regime Type"] .== "Explosive");
+year_ldc = dtYear(tmp_ldc[., datevar]);
+pos_explosive_count_ldc = asDf(unique(year_ldc)~counts(year_ldc, unique(year_ldc)), datevar, "No. Explosive");
+
+// Merge together
+pos_regime_counts_ldc = outerJoin(pos_country_ct_ldc, datevar, pos_stationary_count_ldc, datevar);
+pos_regime_counts_ldc = outerJoin(pos_regime_counts_ldc, datevar, pos_unit_rt_count_ldc, datevar);
+pos_regime_counts_ldc = outerJoin(pos_regime_counts_ldc, datevar, pos_explosive_count_ldc, datevar);
+pos_regime_counts_ldc = missrv(pos_regime_counts_ldc, 0);
+
+pos_prct_counts_ldc = pos_regime_counts_ldc[., 3 4 5]./pos_regime_counts_ldc[., 2];
+pos_prct_counts_ldc = setColNames(pos_prct_counts_ldc, "Pct. Stationary"$|"Pct. Unit Root"$|"Pct. Explosive");
+
+pos_regime_counts_ldc = pos_regime_counts_ldc[., datevar]~pos_prct_counts_ldc;
+
+/*
+* Negative CAB
+*/
+// Split to positive group
+neg_cab_grp_idc = selif(reg_2_data, reg_2_data[., interest_var] .< 0 .and reg_2_data[., "idc"] .==1);
+neg_cab_grp_ldc = selif(reg_2_data, reg_2_data[., interest_var] .< 0 .and reg_2_data[., "ldc"] .==1);
+
+/*
+** IDC
+*/
+// Get  country count by year
+year_idc = dtYear(neg_cab_grp_idc[., datevar]);
+neg_country_ct_idc = asDf(unique(year_idc)~counts(year_idc, unique(year_idc)), datevar, "Total");
+
+// Unit root regimes IDC
+tmp_idc = selif(neg_cab_grp_idc, neg_cab_grp_idc[., "Regime Type"] .== "Unit root");
+year_idc = dtYear(tmp_idc[., datevar]);
+neg_unit_rt_count_idc = asDf(unique(year_idc)~counts(year_idc, unique(year_idc)), datevar, "No. Unit Root");
+
+// Stationary regimes IDC
+tmp_idc = selif(neg_cab_grp_idc, neg_cab_grp_idc[., "Regime Type"] .== "Stationary");
+year_idc = dtYear(tmp_idc[., datevar]);
+neg_stationary_count_idc = asDf(unique(year_idc)~counts(year_idc, unique(year_idc)), datevar, "No. Stationary");
+
+// Explosive regimes IDC
+tmp_idc = selif(neg_cab_grp_idc, neg_cab_grp_idc[., "Regime Type"] .== "Explosive");
+year_idc = dtYear(tmp_idc[., datevar]);
+neg_explosive_count_idc = asDf(unique(year_idc)~counts(year_idc, unique(year_idc)), datevar, "No. Explosive");
+
+// Merge together  IDC
+neg_regime_counts_idc = outerJoin(neg_country_ct_idc, datevar, neg_stationary_count_idc, datevar);
+neg_regime_counts_idc = outerJoin(neg_regime_counts_idc, datevar, neg_unit_rt_count_idc, datevar);
+neg_regime_counts_idc = outerJoin(neg_regime_counts_idc, datevar, neg_explosive_count_idc, datevar);
+neg_regime_counts_idc = missrv(neg_regime_counts_idc, 0);
+
+neg_prct_counts_idc = neg_regime_counts_idc[., 3 4 5]./neg_regime_counts_idc[., 2];
+neg_prct_counts_idc = setColNames(neg_prct_counts_idc, "Pct. Stationary"$|"Pct. Unit Root"$|"Pct. Explosive");
+
+neg_regime_counts_idc = neg_regime_counts_idc[., datevar]~neg_prct_counts_idc;
+
+/*
+** LDC
+*/
+// Get  country count by year
+year_ldc = dtYear(neg_cab_grp_ldc[., datevar]);
+neg_country_ct_ldc = asDf(unique(year_ldc )~counts(year_ldc , unique(year_ldc)), datevar, "Total");
+
+// Unit root regimes LDC
+tmp = selif(neg_cab_grp_ldc, neg_cab_grp_ldc[., "Regime Type"] .== "Unit root");
+year_ldc = dtYear(tmp[., datevar]);
+neg_unit_rt_count_ldc = asDf(unique(year_ldc)~counts(year_ldc, unique(year_ldc)), datevar, "No. Unit Root");
+
+// Stationary regimes LDC
+tmp_ldc = selif(neg_cab_grp_ldc, neg_cab_grp_ldc[., "Regime Type"] .== "Stationary");
+year_ldc = dtYear(tmp_ldc[., datevar]);
+neg_stationary_count_ldc = asDf(unique(year_ldc)~counts(year_ldc, unique(year_ldc)), datevar, "No. Stationary");
+
+// Explosive regimes LDC
+tmp_ldc = selif(neg_cab_grp_ldc, neg_cab_grp_ldc[., "Regime Type"] .== "Explosive");
+year_ldc = dtYear(tmp_ldc[., datevar]);
+neg_explosive_count_ldc = asDf(unique(year_ldc)~counts(year_ldc, unique(year_ldc)), datevar, "No. Explosive");
+
+// Merge together  LDC
+neg_regime_counts_ldc = outerJoin(neg_country_ct_ldc, datevar, neg_stationary_count_ldc, datevar);
+neg_regime_counts_ldc = outerJoin(neg_regime_counts_ldc, datevar, neg_unit_rt_count_ldc, datevar);
+neg_regime_counts_ldc = outerJoin(neg_regime_counts_ldc, datevar, neg_explosive_count_ldc, datevar);
+neg_regime_counts_ldc = missrv(neg_regime_counts_ldc, 0);
+
+neg_prct_counts_ldc = neg_regime_counts_ldc[., 3 4 5]./neg_regime_counts_ldc[., 2];
+neg_prct_counts_ldc = setColNames(neg_prct_counts_ldc, "Pct. Stationary"$|"Pct. Unit Root"$|"Pct. Explosive");
+
+neg_regime_counts_ldc = neg_regime_counts_ldc[., datevar]~neg_prct_counts_ldc;
+
+/*
+** Horizontal bar plot
+*/
+/*
+** Industrialized Countries
+*/
+plotClearLayout;
+plotOpenWindow;
+
+struct plotControl plt;
+plt = plotGetDefaults("bar");
+
+// Set up stacked bar
+plotSetBar(&plt, 1, 1);
+
+// Turn on legend
+plotSetLegend(&plt, "Stationary"$|"Unit Root"$|"Explosive");
+
+// Turn on title
+plotLayout(1, 2, 1);
+plotSetTitle(&plt, "Percentage of Negative CAB Industrialized Countries <br> By Regime Type");
+plotSetXRange(&plt, 0, 1);
+plotBarH(plt, neg_regime_counts_idc[., datevar], neg_regime_counts_idc[., 2 3 4]);
+
+struct plotControl plt2;
+plt2 = plotGetDefaults("bar");
+
+// Set up stacked bar
+plotLayout(1, 2, 2);
+plotSetBar(&plt2, 1, 1);
+plotSetXRange(&plt2, 0, 1);
+plotSetTitle(&plt2, "Percentage of Positive CAB Industrialized Countries <br> By Regime Type");
+plotBarH(plt2, pos_regime_counts_idc[., datevar], pos_regime_counts_idc[., 2 3 4]);
+
+/*
+** Developing Countries
+*/
+plotClearLayout;
+plotOpenWindow;
+
+struct plotControl plt;
+plt = plotGetDefaults("bar");
+
+// Set up stacked bar
+plotSetBar(&plt, 1, 1);
+
+// Turn on legend
+plotSetLegend(&plt, "Stationary"$|"Unit Root"$|"Explosive");
+
+// Turn on title
+plotLayout(1, 2, 1);
+plotSetTitle(&plt, "Percentage of Negative CAB Developing Countries <br> By Regime Type");
+plotSetXRange(&plt, 0, 1);
+plotBarH(plt, neg_regime_counts_ldc[., datevar], neg_regime_counts_ldc[., 2 3 4]);
+
+struct plotControl plt2;
+plt2 = plotGetDefaults("bar");
+
+// Set up stacked bar
+plotLayout(1, 2, 2);
+plotSetBar(&plt2, 1, 1);
+plotSetXRange(&plt2, 0, 1);
+plotSetTitle(&plt2, "Percentage of Positive CAB Developing Countries <br> By Regime Type");
+plotBarH(plt2, pos_regime_counts_ldc[., datevar], pos_regime_counts_ldc[., 2 3 4]);
+end;
+
+/****************************************************************
+** Regime frequency by fixed/flexible regime
+****************************************************************/
+// Iterate over countries
+string var_list = { "fixed", "flexible"};
+
+string gr_title = {"Fixed Currency", "Flexible Currency"};
+
+// Get Break Points
+{ labels, keys } = getColLabels(reg_2_data, "Regime Type");
+
+// Declare plotControl structure
+struct plotControl myPlt;
+myPlt = plotGetDefaults("bar");
+
+
+plotOpenWindow();
+for i(1, 2, 1);
+    
+    tst_data = selif(reg_2_data, reg_2_data[., var_list[i]] .== 1);
+    
+    
+    /*
+    ** Frequency plot of regime type
+    */
+    // Set title
+    plotSetTitle(&myPlt, gr_title[i]);
+    plotSetYRange(&myPlt, 0, 100);
+    
+    plotLayout(1, 2, i);
+    
+    // Frequency plot
+    // Draw histogram with default settings
+    plotFreq(myPlt, tst_data, "Regime Type", 0, 1);
+//    plotAddFreqLabels(tst_data, "Regime Type", 0, 1);
+endfor;
+
+if save_on;
+    plotSave(spath $+ sfile3, 11|8.5, "in");
+endif;
+
+/****************************************************************
+** Regime frequency by fixed/flexible regime and IDC/LDC
+****************************************************************/
+// Iterate over countries
+string var_list = { "fixed", "flexible"};
+string var_list2 = { "idc", "ldc" };
+
+string gr_title = {"Fixed Currency", "Flexible Currency"};
+string gr_title2= {"Industrialized Countries", "Developing Countries"};
+
+// Get Break Points
+{ labels, keys } = getColLabels(reg_2_data, "Regime Type");
+
+// Declare plotControl structure
+struct plotControl myPlt;
+myPlt = plotGetDefaults("bar");
+
+idx = 1;
+plotOpenWindow();
+for i(1, 2, 1);
+    for j(1, 2, 1);
+        tst_data = selif(reg_2_data, reg_2_data[., var_list[i]] .== 1 .and reg_2_data[., var_list2[j]] .== 1);
+        
+        
+        /*
+        ** Frequency plot of regime type
+        */
+        // Set title
+        plotSetTitle(&myPlt, gr_title2[j] $+ " with " $+ gr_title[i]);
+        plotSetYRange(&myPlt, 0, 100);
+        
+        plotLayout(2, 2, idx);
+        
+        // Frequency plot
+        // Draw histogram with default settings
+        plotFreq(myPlt, tst_data, "Regime Type", 0, 1);
+//        plotAddFreqLabels(tst_data, "Regime Type", 0, 1);
+        idx = idx + 1;
+    endfor;
+endfor;
+
+if save_on;
+    plotSave(spath $+ sfile3b, 11|8.5, "in");
+endif;
+
+/****************************************************************
+** Regime frequency by ka_open quantile
+****************************************************************/
+// Iterate over countries
+string cat_list = { "First Quantile", "Second Quantile", "Third Quantile", "Fourth Quantile"};
+
+string gr_title = { "First Quantile", "Second Quantile", "Third Quantile", "Fourth Quantile"};
+
+// Get Break Points
+{ labels, keys } = getColLabels(reg_2_data, "Regime Type");
+
+// Declare plotControl structure
+struct plotControl myPlt;
+myPlt = plotGetDefaults("bar");
+
+
+plotOpenWindow();
+for i(1, 4, 1);
+    
+    tst_data = selif(reg_2_data, reg_2_data[., "Financial Openness"] .== cat_list[i]);
+    
+    
+    /*
+    ** Frequency plot of regime type
+    */
+    // Set title
+    plotSetTitle(&myPlt, gr_title[i] $+ " Financial Openness");
+    plotSetYRange(&myPlt, 0, 100);
+    
+    plotLayout(2, 2, i);
+    
+    // Frequency plot
+    // Draw histogram with default settings
+    plotFreq(myPlt, tst_data, "Regime Type", 0, 1);
+//    plotAddFreqLabels(tst_data, "Regime Type", 0, 1);
+endfor;
+
+if save_on;
+    plotSave(spath $+ sfile4, 11|8.5, "in");
+endif;
+
+/****************************************************************
+** Regime frequency by commodity exporter
+****************************************************************/
+// Iterate over countries
+string cat_list = { "First Quantile", "Second Quantile", "Third Quantile", "Fourth Quantile"};
+
+string gr_title = { "First Quantile commd", "Second Quantile commd", "Third Quantile commd", "Fourth Quantile commd"};
+
+// Get Break Points
+{ labels, keys } = getColLabels(reg_2_data, "Regime Type");
+
+// Declare plotControl structure
+struct plotControl myPlt;
+myPlt = plotGetDefaults("bar");
+
+
+plotOpenWindow();
+for i(1, 4, 1);
+    
+    tst_data = selif(reg_2_data, reg_2_data[., "Commodity Exporter"] .== cat_list[i]);
+    
+    
+    /*
+    ** Frequency plot of regime type
+    */
+    // Set title
+    plotSetTitle(&myPlt, gr_title[i]);
+    plotSetYRange(&myPlt, 0, 100);
+    
+    plotLayout(2, 2, i);
+    
+    // Frequency plot
+    // Draw histogram with default settings
+    plotFreq(myPlt, tst_data, "Regime Type", 0, 1);
+//    plotAddFreqLabels(tst_data, "Regime Type", 0, 1);
+endfor;
+
+if save_on;
+    plotSave(spath $+ sfile5, 11|8.5, "in");
+endif;
+
+/****************************************************************
+** Regime frequency by commodity exporter
+****************************************************************/
+string gr_title = { "Commodity Exporter", "Not Commodity Exporter"};
+
+// Declare plotControl structure
+struct plotControl myPlt;
+myPlt = plotGetDefaults("bar");
+
+
+plotOpenWindow();
+for i(0, 1, 1);
+    
+    tst_data = selif(reg_2_data, reg_2_data[., "comd_d"] .== i);
+    
+    
+    /*
+    ** Frequency plot of regime type
+    */
+    // Set title
+    j = i+1;
+    j;
+    plotSetTitle(&myPlt, gr_title[j]);
+    plotSetYRange(&myPlt, 0, 100);
+    
+    plotLayout(1, 2, j);
+    
+    // Frequency plot
+    // Draw histogram with default settings
+    plotFreq(myPlt, tst_data, "Regime Type", 0, 1);
+//    plotAddFreqLabels(tst_data, "Regime Type", 0, 1);
+endfor;
+
+if save_on;
+    plotSave(spath $+ sfile6, 11|8.5, "in");
+endif;
+
+/****************************************************************
+** Regime frequency by NFA quantile exporter
+****************************************************************/
+// Iterate over countries
+string cat_list = { "First Quantile", "Second Quantile", "Third Quantile", "Fourth Quantile"};
+
+string gr_title = { "First Quantile NFA", "Second Quantile NFA", "Third Quantile NFA", "Fourth Quantile NFA"};
+
+// Get Break Points
+{ labels, keys } = getColLabels(reg_2_data, "Regime Type");
+
+// Declare plotControl structure
+struct plotControl myPlt;
+myPlt = plotGetDefaults("bar");
+
+
+plotOpenWindow();
+for i(1, 4, 1);
+    
+    tst_data = selif(reg_2_data, reg_2_data[., "NFA Quantile"] .== cat_list[i]);
+    
+    
+    /*
+    ** Frequency plot of regime type
+    */
+    // Set title
+    plotSetTitle(&myPlt, gr_title[i]);
+    plotSetYRange(&myPlt, 0, 100);
+    
+    plotLayout(2, 2, i);
+    
+    // Frequency plot
+    // Draw histogram with default settings
+    plotFreq(myPlt, tst_data, "Regime Type", 0, 1);
+//    plotAddFreqLabels(tst_data, "Regime Type", 0, 1);
+endfor;
+
+if save_on;
+    plotSave(spath $+ sfile7, 11|8.5, "in");
+endif;
+
+/****************************************************************
+** Regime frequency by NFA quantile exporter Industrialized
+****************************************************************/
+// Iterate over countries
+string gr_list = { "First Quantile NFA", "Second Quantile NFA", "Third Quantile NFA", "Fourth Quantile NFA"};
+
+string cat_title = { "First Quantile", "Second Quantile", "Third Quantile", "Fourth Quantile"};
+
+// Get Break Points
+{ labels, keys } = getColLabels(reg_2_data, "Regime Type");
+
+// Declare plotControl structure
+struct plotControl myPlt;
+myPlt = plotGetDefaults("bar");
+
+
+plotOpenWindow();
+for i(1, 4, 1);
+    
+    tst_data = selif(reg_2_data, reg_2_data[., "NFA Quantile"] .== cat_list[i] .and reg_2_data[., "idc"] .==1);
+    
+    
+    /*
+    ** Frequency plot of regime type
+    */
+    // Set title
+    plotSetTitle(&myPlt, "Industrialized countries " $+ gr_title[i]);
+    plotSetYRange(&myPlt, 0, 100);
+    
+    plotLayout(2, 2, i);
+    
+    // Frequency plot
+    // Draw histogram with default settings
+    plotFreq(myPlt, tst_data, "Regime Type", 0, 1);
+//    plotAddFreqLabels(tst_data, "Regime Type", 0, 1);
+endfor;
+
+if save_on;
+    plotSave(spath $+ sfile7a, 11|8.5, "in");
+endif;
+
+/****************************************************************
+** Regime frequency by NFA quantile exporter Developing
+****************************************************************/
+// Iterate over countries
+string gr_list = { "First Quantile NFA", "Second Quantile NFA", "Third Quantile NFA", "Fourth Quantile NFA"};
+
+string cat_title = { "First Quantile", "Second Quantile", "Third Quantile", "Fourth Quantile"};
+
+// Get Break Points
+{ labels, keys } = getColLabels(reg_2_data, "Regime Type");
+
+// Declare plotControl structure
+struct plotControl myPlt;
+myPlt = plotGetDefaults("bar");
+
+
+plotOpenWindow();
+for i(1, 4, 1);
+    
+    tst_data = selif(reg_2_data, reg_2_data[., "NFA Quantile"] .== cat_list[i] .and reg_2_data[., "ldc"] .==1);
+    
+    
+    /*
+    ** Frequency plot of regime type
+    */
+    // Set title
+    plotSetTitle(&myPlt, "Developing countries " $+ gr_title[i]);
+    plotSetYRange(&myPlt, 0, 100);
+    
+    plotLayout(2, 2, i);
+    
+    // Frequency plot
+    // Draw histogram with default settings
+    plotFreq(myPlt, tst_data, "Regime Type", 0, 1);
+//    plotAddFreqLabels(tst_data, "Regime Type", 0, 1);
+endfor;
+
+if save_on;
+    plotSave(spath $+ sfile7b, 11|8.5, "in");
+endif;
+

@@ -3,9 +3,11 @@
 ****************************************************************/
 // Data loading path
 fpath = "clean-data/";
+fpath2 = "data/";
 
 // Filename
 fname = "reg_cab_data.csv";
+fname2 = "cab_with_cn.csv";
 
 // Results saving paths
 save_on = 1;
@@ -22,24 +24,29 @@ interestvar = "pct_cab";
 reg_data = loadd(fpath$+fname);
 reg_data  = asdate(move(reg_data ), "%Y-Q%q", datevar);
 
-// Generate Year variable
+// Generate Year date variable
+//cab_with_cn[., "year"] = asdate(cab_with_cn[., "year"], "%Y");
+
 reg_data = selif(reg_data, reg_data[., interestvar] .!= miss());
 Year = dtYear(reg_data[., datevar]);
 Year = asDate(Year, "%Y");
 
 // Merge with existing reg data
 reg_data = Year~reg_data;
-reg_data = dfname(move(reg_data), "Year", "X1");
+reg_data = dfname(move(reg_data), "year", "X1");
 
 
 /****************************************************************
 ** Aggregating annually
 ****************************************************************/
 // Get unique years
-Year_uniq = unique(reg_data[., "Year"]);
+Year_uniq = unique(reg_data[., "year"]);
 
 // Get unique country codes
 ccodes = unique(reg_data[., group_var]);
+
+// Get country to cn mapping
+cn_mapping = aggregate(reg_data[., group_names group_var], "mean", group_names); 
 
 // Get column labels
 { cnames, keys } = getColLabels(reg_data, group_names);
@@ -54,13 +61,13 @@ for i(1, N_groups, 1);
     tmp = __get_test_y_with_year(reg_data, cnames[i], group_names, group_var, datevar, interestvar);
     
     // Now aggregate 
-    tmp = aggregate(tmp, "mean", "Year", 1);
+    tmp = aggregate(tmp, "mean", "year", 1);
     
     // Convert to DF
     tmp = dfname(move(tmp), "cab_"$+cnames[i], interestvar);
  
     // Now merge with storage matrix
-    cab_wide = outerJoin(cab_wide, "Year", tmp, "Year", "full");
+    cab_wide = outerJoin(cab_wide, "year", tmp, "year", "full");
     
 endfor;
 
@@ -88,7 +95,20 @@ values_to = "Pct CAB";
 cab_long = dfLonger(cab_wide, columns, names_to, values_to, pctl);
 
 // Sort data
-cab_long = sortc(cab_long, group_names$|"Year");
+cab_long = sortc(cab_long, group_names$|"year");
+cab_long = outerJoin(cab_long, group_names, cn_mapping, group_names);
+
+// Load group dummies
+grp_data = loadd(fpath2$+fname2);
+
+grp_id = ntos(grp_data[., "cn"]) $+ "_" $+ ntos(grp_data[., "year"]);
+grp_data = grp_data~asDF(grp_id, "grp_id");
+tmp_data = aggregate(grp_data, "mean", "grp_id");
+tmp_data = tmp_data[., "ccode" "cn" "year" "idc" "ldc" "emg" "eap" "eca" "mena" "sa" "we" "na" "ssa" "lac" "oil" "emg2" "fc" "ez" "euro_start"];
+tmp_data[., "year"] = asdate(tmp_data[., "year"], "%Y");
+
+cab_long = outerJoin(cab_long, "cn"$|"year", tmp_data, "cn"$|"year");
+
 if save_on;
     saved(cab_long, spath$+sfile1);
 endif;
@@ -106,10 +126,10 @@ proc (1) = __get_test_y_with_year(data, cname, ...);
     e = data[., group_names] .== cname;
     
     // Get test data
-    tmp_data = selif(data[., "Year" interestvar], e);
+    tmp_data = selif(data[., "year" interestvar], e);
     
     // Get CAB for country
-    y_test = packr(tmp_data[., "Year" interestvar]);
+    y_test = packr(tmp_data[., "year" interestvar]);
     
     retp(y_test);
 endp;

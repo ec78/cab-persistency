@@ -418,3 +418,40 @@ proc (3) = plotGetPeriodCABMean(data, interest_var, time_var, date1, date2);
     
     retp(mean, dts, t);
 endp;
+
+proc (0) = plotAddFreqLabels(x, index, ...);
+    local has_md, p_axis, sort, freq_count, bar_labels, bar_y;
+    
+    // Get dynargse
+    { sort, p_axis } = dynargsGet(1|2, 0, 0);
+    
+    // Get metadata
+    has_md = hasmetadata(x);
+    
+    // Perform frequency count
+    freq_count = _frequency(x, index, 1, has_md, sort);
+    
+    // Get bar labels if pct
+    if p_axis;
+       bar_y = freq_count[., "Count"]/sumc(freq_count[., "Count"])*100;
+       bar_labels = ntos(bar_y, 4) $+ "%";
+    else;
+       bar_y = freq_count[., "Count"];
+        bar_labels = itos(freq_count[., "Count"]);
+    endif;
+    
+    // Set up annotation
+    struct plotAnnotation myAnnotation;
+ 
+    //Fill ‘myAnnotation’ with default values
+    myAnnotation = annotationGetDefaults();
+    
+    // Set text alignment to center
+    annotationSetTextAlign(&myAnnotation, "center");
+
+    annotationSetFont(&myAnnotation, "arial", 14);
+   
+    // PlotAnnotations
+    plotAddTextbox(bar_labels, seqa(1, 1, rows(bar_labels)), bar_y+4, "center"); 
+        
+endp;

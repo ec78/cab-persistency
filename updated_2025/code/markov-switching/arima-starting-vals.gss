@@ -58,8 +58,8 @@ const = 1;
 ** Errors out at Colombia and China
 ** Chile is country #14
 */
-N_groups = 16;
-for i(15, N_groups, 1);
+N_groups = 74;
+for i(74, N_groups, 1);
    
     // Select individual series
     yt = __get_test_y(data, cnames[i]);

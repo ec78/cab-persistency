@@ -72,17 +72,21 @@ plotSetWhichYAxis(&ctl, which);
 
 // Set the left y-axis range to between 0 and 10,
 // and the right y-axis to between 0 and 100
-plotSetYRange(&ctl, 0|10, 0|100);
+plotSetYRange(&ctl, 0|10, 0|10);
+
+// Set the left and right y-axis labels
+plotSetYLabel(&ctl, "Current Account (% GDP)"$|"Standard Deviation (% GDP)", "Arial", 12);
 
 // Set up the line style
 plotSetLinePen(&ctl, 2, "black", 1|2);
 
 // Set up legend
-label = "Absolute Mean Value of Current Account (%GDP)"$|"Within Period Current Account (%GDP) Variance";
-plotSetLegend(&ctl, label, "bottom center outside", 0);
+label = "Absolute Mean Value of Current Account (%GDP)"$|"Within Period Current Account (%GDP) Standard Deviation";plotSetLegend(&ctl, label, "bottom center outside", 0);
+
 
 // Create plots
 plotXY(ctl, csa_ca[.,date_var], csa_ca[.,interest_var]~csvar_ca[., interest_var]);
+
 
 /*
 ** Compute mean bars

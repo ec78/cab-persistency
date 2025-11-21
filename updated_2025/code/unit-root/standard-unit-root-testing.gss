@@ -37,7 +37,7 @@ ccodes = unique(data[., group_var]);
 N = rows(cnames);
 
 // Turn saving on
-save_on = 1;
+save_on = 0;
 
 // Get start and end data
 tmp_data = data[., date_var group_names interest_var];

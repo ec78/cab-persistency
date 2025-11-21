@@ -75,7 +75,7 @@ x_mat = sqrt(coeffs[3:8, .]./(1-coeffs[3:8, .]));
         
 // Loop through each country
 // N_groups = [fill in here to limit number of groups];
-i_mat = {15, 16, 73};
+i_mat = 74;
 N_groups = rows(i_mat);
 for j(1, N_groups, 1);
     i = i_mat[j]; 
@@ -109,40 +109,17 @@ for j(1, N_groups, 1);
         alpha1 = coeffs[2, i];
         Sig0  =  coeffs[9, i];
         phi0  =  coeffs[10, i];
-        //    aphi1 =  coeffs[11, i];
-        //    aphi2 =  coeffs[12, i];
-        //    aphi3 =  coeffs[13, i];
-        //    aphi4 =  coeffs[14, i];
         Sig1 =   coeffs[15, i];
         phi1 =   coeffs[16, i];
-        //    afhi1 =  coeffs[17, i];
-        //    afhi2 =  coeffs[18, i];
-        //    afhi3 =  coeffs[19, i];
-        //    afhi4 =  coeffs[20, i];
-        
-//            pm = coeffs[3, i];
-//            qm = coeffs[4, i];
-//            pv = coeffs[5, i];
-//            qv = coeffs[6, i];
-//            pb = coeffs[7, i];
-//            qb = coeffs[8, i];
-        
-//            xpm = sqrt(pm/(1-pm));
-//            xqm = sqrt(qm/(1-qm));
-//            xpv = sqrt(pv/(1-pv));
-//            xqv = sqrt(qv/(1-qv));
-//            xpb = sqrt(pb/(1-pb));
-//            xqb = sqrt(qb/(1-qb));
-        // Get ratios        
-//        x_mat = sqrt(coeffs[3:8, .]./(1-coeffs[3:8, .]));
-        
+
         // Transform y
         yus = yy[1:5]|zeros(rows(yy)-5, 1);
-        pas00 = coeffs[11:14, i]';
-        pas11 = coeffs[17:20, i]';
         
         //    pas00 = (aphi1~aphi2~aphi3~aphi4);
         //    pas11 = (afhi1~afhi2~afhi3~afhi4);
+        pas00 = coeffs[11:14, i]';
+        pas11 = coeffs[17:20, i]';
+        
         
         // Replications loop
         jj = 1;
@@ -174,8 +151,9 @@ for j(1, N_groups, 1);
             // Starting probability
             resid = zeros(na - 4, 1);
             proba = zeros(na - 4, 3);
+            
+            // x0 = alpha0|alpha1|xpm|xqm|xpv|xqv|xpb|xqb|10*sig0|0|(pas00')|10*sig1|0|(pas11');
             x0 = coeffs[1 2, i]|x_mat[., i]|coeffs[9 10, i]|(pas00')|coeffs[15 16, i]|(pas11');
-            //        x0 = alpha0|alpha1|xpm|xqm|xpv|xqv|xpb|xqb|10*sig0|0|(pas00')|10*sig1|0|(pas11');
             
             kc=1;
             
@@ -218,8 +196,6 @@ for j(1, N_groups, 1);
                     
                     kk = kk+1;
                     
-//                    xxx[jj, .] = x[10, 1]~x[16, 1];
-//                    sss[jj, .] = std[10, 1]~std[16, 1];
                     xxx[jj, .] = x[10 16, 1];
                     sss[jj, .] = std[10 16, 1];
                 endif;
@@ -241,8 +217,6 @@ for j(1, N_groups, 1);
                 
                 kk = kk + 1;
                 
-//                xxx[jj, .] = x[10, 1]~x[16, 1];
-//                sss[jj, .] = std[10, 1]~std[16, 1];
                 xxx[jj, .] = x[10 16, 1]';
                 sss[jj, .] = std[10 16, 1]';
             endif;

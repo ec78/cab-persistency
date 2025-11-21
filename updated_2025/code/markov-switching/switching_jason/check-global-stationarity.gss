@@ -26,17 +26,19 @@ N_groups = rows(country);
 
 /*
 ** Load the coefficient vector
-** phi0 = x[13, i]
-** phi1 = x[16, i]
+** phi0 = 1 + x[10, i]
+** phi1 = 1 + x[16, i]
 ** p00 =  x[8, i]
 ** p11 =  x[7, i]
 */
 cond_1 = asDF(zeros(N_groups, 1), "Condition One");
 cond_2 = asDF(zeros(N_groups, 1), "Condition Two");
 
+p00 = coeff[7, .];
+p11 = coeff[8, .];
 for i(1, N_groups, 1);
-    cond_1[i] = coeff[8, i]*(1 + coeff[13, i])^2 + coeff[7, i]*(1 + coeff[16, i])^2 + (1 - coeff[8, i] - coeff[7, i])*((1 + coeff[16, i])^2*(1 + coeff[13, i])^2);
-    cond_2[i] = coeff[8, i]*(1 + coeff[13, i])^2 + coeff[7, i]*(1 + coeff[16, i])^2;
+    cond_1[i] = p00[i]*(1 + coeff[10, i])^2 + p11[i]*(1 + coeff[16, i])^2 + (1 - p00[i] - p11[i])*((1 + coeff[16, i])^2*(1 + coeff[10, i])^2);
+    cond_2[i] = p00[i]*(1 + coeff[10, i])^2 + p11[i]*(1 + coeff[16, i])^2;
 endfor;
 
 global_cond = asDF(country, "Country")~cond_1~cond_2;
