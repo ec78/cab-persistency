@@ -31,7 +31,7 @@ interest_var = "Pct CAB";
 
 
 // Results saving paths
-save_on = 1;
+save_on = 0;
 spath = "results/data-summaries/plots/data-summaries-ii/";
 sfile1 = "regime-type-freq.png";
 sfile2 = "regime-type-country-groups.png";
@@ -66,7 +66,7 @@ reg_2_data = reg_2_data~asDF(adc, "adc");
 /*
 ** Impute Country Group Variables
 */
-string country_grps = { "idc", "ldc", "emg", "lac", "adc", "ez" };
+string country_grps = { "idc", "emg", "ldc", "eap", "lac", "ez" };
 
 ///*
 //** Check counts for variables of interest by country
@@ -100,8 +100,8 @@ endif;
 ** Regime frequency by country group
 ****************************************************************/
 
-string gr_title = {"Industrialized Countries", "Developing Countries", "Emerging Countries",
-    "Latin American Countries", "Developing Asian Countries", "Euro Countries" };
+string gr_title = {"Industrialized", "Emerging", "Less Developed", 
+    "Latin American", "East Asian and Pacific", "Euro Zone" };
 
 // Get Break Points
 { labels, keys } = getColLabels(reg_2_data, "Regime Type");
@@ -110,6 +110,8 @@ string gr_title = {"Industrialized Countries", "Developing Countries", "Emerging
 struct plotControl myPlt;
 myPlt = plotGetDefaults("bar");
 plotCanvasSize("fill");
+
+plotSetFonts(&myPlt, "all", "Times New Roman");
 
 plotOpenWindow();
 for i(1, rows(country_grps), 1);
@@ -184,10 +186,16 @@ plotSetBar(&plt, 1, 1);
 // Turn on legend
 plotSetLegend(&plt, "Stationary"$|"Unit Root"$|"Explosive");
 
+// Set Y Range
+plotSetYRange(&plt, 0, 1);
+
+// Set up X-axis
+plotSetXTicInterval(&plt, 10, "years");
+
 // Turn on title
 plotSetTitle(&plt, "Percentage of Country By Regime Type");
-plotBarH(plt, regime_counts[., datevar], regime_counts[., 6 7 8]);
-
+plotBar(plt, regime_counts[., datevar], regime_counts[., 6 7 8]);
+end; 
 /****************************************************************
 ** Regime frequency by year and positive or negative CAB
 ***************************************************************/

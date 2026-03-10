@@ -96,7 +96,6 @@ plotSetLinePen(&ctl, 2, "black", 1|2);
 
 // Set up legend
 label = "Absolute Mean Value of Current Account (%GDP)"$|"Within Period Current Account (%GDP) Standard Deviation";
-plotSetLegend(&ctl, label, "bottom center outside", 0);
 
 /*
 ** Iterate through country groups
@@ -129,9 +128,17 @@ for i(1, rows(country_grps), 1);
     
     plotSetTitle(&ctl, gr_title[i], "Arial", 16);
     
+    // Turn on legend for bottom graph
+    if i == 5;
+        plotSetLegend(&ctl, label, "bottom center outside", 0);
+    elseif i == 6;
+        plotSetLegend(&ctl, "off");
+    endif;
+    
     // Create plots
     plotXY(ctl, csa_ca[.,date_var], csa_ca[.,interest_var]~csvar_ca[., interest_var]);
-    if country_grps[i] == "euro";
+    
+    if country_grps[i] == "ez";
         struct plotControl ctl2;
         ctl2 = plotGetDefaults("xy");
         

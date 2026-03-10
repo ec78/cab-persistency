@@ -1,0 +1,95 @@
+/*
+**  This example runs the Multinomial Logit Regression using 
+**  GAUSS DC application.
+**
+**  It utilizes the data structure implementation style. This data
+**  style is best suited for data loaded from a text or spreadsheet file.
+**
+**   Long, J. Scott, 1997, _Regression_Models_for_Categorical_
+**   _and_Limited_Dependent_Variables_, Table 6.2, page 159.
+*/
+
+new;
+cls;
+library dc;
+
+/*
+** Load data
+*/
+// Regime data
+fname_regimes = "clean-data/mnl_reg_data.xlsx";
+
+y = loadd(fname_regimes);
+
+// Set testing varlist here
+y_var = "Regime Type";
+x_vars = "fixed er"
+       $|"opn"
+       $|"ka_open"
+       $|"current_def"
+       $|"gsur_3_yr"
+       $|"gsur_def"
+       $|"fd_gap"
+       $|"ir_r_lmf"
+       $|"comm_ex"
+       $|"manu_ex";
+       
+data = packr(y[., y_var$|x_vars]);
+
+/*
+** Apply settings and describe data
+*/
+
+// Declare 'ctl' to be a 'dcControl' structure
+// and fill with default settings
+struct dcControl ctl;
+ctl = dcControlCreate();
+
+// Dependent variable
+dcSetYVar(&ctl, data[., y_var]);
+dcSetYLabel(&ctl, y_var);
+
+// Get column labels for Y category labels
+{ y_labels, keys } = getColLabels(y, y_var);
+dcSetYCategoryLabels(&ctl, y_labels);
+
+// Reference category excluded from regression
+dcSetReferenceCategory(&ctl, y_labels[1]);
+
+// Independent variable Labels
+dcSetXVars(&ctl, data[., x_vars]);
+dcSetXLabels(&ctl, x_vars);
+
+/*
+** Perform Multinomial Logit estimation
+** and print results
+*/
+
+//Declare 'out' to be a dcOut struct
+//to hold estimation results
+struct dcOut out;
+
+//Perform estimation
+out = multinomialLogit(ctl);
+
+//Print results
+call printDCOut(out);
+
+
+/*
+** (C) Copyright 2015-2018 Aptech Systems,Inc.
+** All Rights Reserved.
+**
+** This Software Product is PROPRIETARY SOURCE CODE OF APTECH
+** SYSTEMS, INC.    This File Header must accompany all files using
+** any portion, in whole or in part, of this Source Code.   In
+** addition, the right to create such files is strictly limited by
+** Section 2.A. of the GAUSS Applications License Agreement
+** accompanying this Software Product.
+**
+** If you wish to distribute any portion of the proprietary Source
+** Code, in whole or in part, you must first obtain written
+** permission from Aptech Systems.
+**
+**
+*/

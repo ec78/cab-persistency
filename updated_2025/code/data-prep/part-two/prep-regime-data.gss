@@ -38,6 +38,7 @@ loadarray probs = ^filestr;
 
 // IMF groupings
 imf_groupings = loadd(fpath $+ "/imf_groupings.xlsx");
+imf_groupings = delif(imf_groupings, imf_groupings[., "Country"].=="Netherlands");
 
 // Get unique country codes
 ccodes = unique(cab_data[., group_var]);
@@ -140,6 +141,9 @@ regimes = outerJoin(regimes, "country_name", results_data[., "Country" "Phi0" "P
 regimes = regimes~asDF(((1-regimes[., "Regime"]).*regimes[., "Phi0"] + regimes[., "Regime"].*regimes[., "Phi1"]), "current_phi");  
 
 regimes = outerJoin(regimes, "cn", imf_groupings, "cn");
+
+//
+regimes = delif(regimes, regimes[., "Country"].== "Netherlands");
 
 // Save data
 saved(regimes, spath $+ "regimes_summary.gdat");

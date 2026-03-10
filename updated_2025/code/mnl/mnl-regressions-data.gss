@@ -1,0 +1,181 @@
+new;
+cls;
+
+#include code/cab_util.src 
+
+/****************************************************************
+** Data loading information
+****************************************************************/
+// Data loading path
+fpath = "data/";
+fpath_probs = "code/markov-switching/switching_jason/";
+
+// Coefficient estimates
+fname_results = "ms-estimates-new.csv";
+
+// CAB data
+fname_cab = "cab_pct_annual.gdat";
+
+// Regime data
+fname_regimes = "clean-data/regimes_summary.gdat";
+
+// Determinants data
+fname_determinants = "clean-data/determinants_cab.dta";
+
+// Crisis data
+fname_crisis = "data/cis_currency.dta";
+
+// Variables of interest
+groupvar = "cn";
+group_names = "country_name";
+datevar_1 = "Year";
+datevar_2 = "year";
+interest_var = "Pct CAB";
+
+// Saving data
+spath = "clean-data";
+sname = "/mnl_reg_data.xlsx";
+
+spath2 = "data";
+sname2 = "/determinant_timespans.xlsx";
+
+/**************
+Load data
+****************/
+// Regime data
+regimes = loadd(fname_regimes, "Year + country_name + cn + Regime + Regime Type + Phi0 + Phi1 + current_phi + Country");
+regimes = asDate(regimes, "%Y", datevar_1);
+
+// CAB data
+reg_2_data = loadd(fpath $+ fname_cab);
+
+// Load the daterminants
+det_data = loadd(fname_determinants);
+det_data[., "year"] = asdate(det_data[., "year"], "%Y");
+
+// Load crisis data
+crisis_data = loadd(fname_crisis);
+crisis_data[., "year"] = asdate(crisis_data[., "year"], "%Y");
+crisis_data = missrv(crisis_data, 0);
+
+/****************************
+Merge the data 
+*****************************/
+reg_2_data = outerJoin(reg_2_data, datevar_2$|group_names, regimes, datevar_1$|group_names);
+
+// Clean up
+reg_2_data = delcols(reg_2_data, "cn_2");
+
+// Rearrange
+reg_2_data = order( reg_2_data, "year"$|"country_name"$|"cn"$|"ccode"$|"Pct CAB"$|"Regime Type");
+
+// Merge with determinants 
+reg_2_data = outerJoin(reg_2_data, datevar_2$|groupvar, det_data, datevar_2$|groupvar);
+
+// Merge with crisis data
+reg_2_data = outerJoin(reg_2_data, datevar_2$|groupvar, crisis_data, datevar_2$|groupvar);
+
+print "Data set is unique with respect to year and cn:";
+isunique(reg_2_data, datevar_2$|groupvar);
+
+/*
+** Country Group Variables
+*/
+string country_grps = { "idc", "emg", "ldc", "eap", "lac", "ez" };
+
+/*
+** Clean up variables
+*/
+//reg_2_data = reg_2_data[., "year" "country_name" "cn" "ccode" "Pct CAB" "Regime Type" "idc" "ldc" "emg" "eap" "eca" "mena" "sa" "we" "na" "ssa" "lac" "oil" "emg2" "fc" "ez" "euro_start" "Regime" "Phi0" "Phi1" "current_phi" "Country" "opn" "tr" "tr_g" "tr_imp" "reserves_st_debt" "st_debt" "current_v" "exch_rate" "current" "mscps" "dcps" "pop" "ae" "emde" "emde_excl_China" "eap_emde" "eca_emde" "sar_emde" "ssa_emde" "lac_emde" "mna_emde" "com_imp_emde" "com_exp_emde" "world" "eap_excl_china" "mna_oil_exp" "mna_oil_imp" "ssa_ind_com_exp" "ssa_other_emde" "bric" "euro" "emde_excl_BRIC" "com_im_no_bric" "com_ex_no_bric" "emde_tre" "emde_ergy_exp" "emde_mtl_exp" "natl_saving" "rypc_ppp" "gsur" "kaopen" "ka_open" "reer" "d_reer" "d_reer_sd5" "d_reer_mn5" "d_reer_var5" "cv5_d_reer" "fd" "trend_fd" "fd_gap" "mineral" "fuel" "food" "manufact" "commod_exp" "tot" "bi_imports" "bi_exports" "world_exports" "world_imports" "world_trade" "rank" "lmf" "lmf_trade" "mi_r" "ers_r" "fo_r" "rgdpe" "share_y" "rel_inc" "rel_inc2" "pcryg" "nfa_r" "low" "low_mid" "upper_mid" "high" "emerging" "full" "eu" "decades" "ers_r_mdec" "mi_r_mdec" "fo_r_mdec" "share_y_mdec" "rel_inc_mdec" "opn_mdec" "geocon_mdec" "commod_exp_mdec" "fd_mdec" "gsur_mdec" "natl_saving_mdec" "ltot" "d_ltot" "sd_tot" "all" "d_ltot_sd" "rel_inc_sq_mdec" "m_d" "ers_r_m" "mi_r_m" "fo_r_m" "share_y_m" "rel_inc_m" "opn_m" "geocon_m" "commod_exp_m" "fd_m" "gsur_m" "sd_tot_m" "natl_saving_m" "d_ltot_sd2" "Portfolioequityassets" "Portfolioequityliabilities" "FDIassets" "FDIliabilities" "Debtassetsportfoliodebtot" "Debtliabilitiesportfoliodebt" "financialderivativesassets" "financialderivativesliabiliti" "FXReservesminusgold" "Totalassetsexclgold" "Totalliabilities" "NetIIPexclgold" "OFFICIALIIP" "GDPUS" "Portfoliodebtassets" "Portfoliodebtliabilities" "Otherinvestmentassets" "Otherinvestmentliabilities" "Currentaccountbalance" "Capitalaccount" "Exchangerateperiodavg" "Exchangerateendofperiod" "netIIPexclgoldGDPdomestic" "netIIPGDPdomesticcurrency" "ir_r_lmf"];
+//reg_2_data = reg_2_data[., "year" "country_name" "cn" "ccode" "Pct CAB" "Regime Type" "idc" "ldc" "emg" "eap" "eca" "mena" "sa" "we" "na" "ssa" "lac" "oil" "emg2" "fc" "ez" "euro_start" "Regime" "Phi0" "Phi1" "current_phi" "Country" "opn" "tr" "tr_g" "tr_imp" "reserves_st_debt" "st_debt" "current_v" "exch_rate" "current" "mscps" "dcps" "pop" "ae" "emde" "emde_excl_China" "eap_emde" "eca_emde" "sar_emde" "ssa_emde" "lac_emde" "mna_emde" "com_imp_emde" "com_exp_emde" "world" "eap_excl_china" "mna_oil_exp" "mna_oil_imp" "ssa_ind_com_exp" "ssa_other_emde" "bric" "euro" "emde_excl_BRIC" "com_im_no_bric" "com_ex_no_bric" "emde_tre" "emde_ergy_exp" "emde_mtl_exp" "natl_saving" "rypc_ppp" "gsur" "kaopen" "ka_open" "reer" "d_reer" "d_reer_sd5" "d_reer_mn5" "d_reer_var5" "cv5_d_reer" "fd" "trend_fd" "fd_gap" "mineral" "fuel" "food" "manufact" "commod_exp" "tot" "bi_imports" "bi_exports" "world_exports" "world_imports" "world_trade" "rank" "lmf" "lmf_trade" "mi_r" "ers_r" "fo_r" "rgdpe" "share_y" "rel_inc" "rel_inc2" "pcryg" "nfa_r" "low" "low_mid" "upper_mid" "high" "emerging" "full" "eu" "decades" "ltot" "d_ltot" "sd_tot" "all" "d_ltot_sd" "m_d" "ers_r_m" "mi_r_m" "fo_r_m" "share_y_m" "rel_inc_m" "opn_m" "geocon_m" "commod_exp_m" "fd_m" "gsur_m" "sd_tot_m" "natl_saving_m" "d_ltot_sd2" "Portfolioequityassets" "Portfolioequityliabilities" "FDIassets" "FDIliabilities" "Debtassetsportfoliodebtot" "Debtliabilitiesportfoliodebt" "financialderivativesassets" "financialderivativesliabiliti" "FXReservesminusgold" "Totalassetsexclgold" "Totalliabilities" "NetIIPexclgold" "OFFICIALIIP" "GDPUS" "Portfoliodebtassets" "Portfoliodebtliabilities" "Otherinvestmentassets" "Otherinvestmentliabilities" "Currentaccountbalance" "Capitalaccount" "Exchangerateperiodavg" "Exchangerateendofperiod" "netIIPexclgoldGDPdomestic" "netIIPGDPdomesticcurrency" "ir_r_lmf"];
+
+/*******************************************************
+First round features list:
+1. Exchange rate regime
+2. Trade openness 
+3. Financial openness 
+4. Size of current account balance
+5. Exchange rate misalignment
+6. Budget balance
+7. International reserves holding
+8. Income level - relative per capita income level 
+9. Net foreign asset position
+10. Currency crisis 
+11. Commodity or manufacturing exporter 
+*********************************************************/
+// Exchange rate regimes from the exchange rate stability variable
+fixed_er = asDF(reg_2_data[., "ers_r"].>0.70, "fixed er");
+flexible_er = asDF(reg_2_data[., "ers_r"].<0.30, "flexible er");
+
+determinants = fixed_er~flexible_er;
+
+// Trade openness
+determinants = determinants~reg_2_data[., "opn"];
+
+// Financial openness - Normalized Chinn-Ito index
+determinants = determinants~reg_2_data[., "ka_open"];
+
+///*
+//** Size of current account balance:
+//**          3 year sum
+//**          Neg/positive
+//*/
+//cab_3_yr = movingSumPanel(reg_2_data[., "current_v" group_names datevar_2], group_names, 3, datevar_2);
+//cab_3_yr = dfname(move(cab_3_yr), "cab_3_yr", "X3");
+cab_neg = asDF(reg_2_data[., interest_var].<0, "current_def");
+
+determinants = determinants~cab_neg;
+
+/*
+** Exchange rate misalignment
+**   Need to ask about this
+*/
+
+/*
+** Budget Balance- 3 yr accumulation
+** 
+*/
+// Three year accumulation
+gsur_3_yr = movingSumPanel(reg_2_data[., "gsur" group_names datevar_2], group_names, 3, datevar_2);
+gsur_3_yr = dfname(move(gsur_3_yr), "gsur_3_yr", "X3");
+
+// Government balance deficit
+gsur_neg = asDF(reg_2_data[., "gsur"].<0, "gsur_def");
+
+determinants = determinants~gsur_3_yr~gsur_neg;
+
+/*
+** Financial development gap
+*/
+determinants = determinants~reg_2_data[., "fd_gap"];
+
+/*
+** International reserves holdings
+*/
+determinants = determinants~reg_2_data[., "ir_r_lmf"];
+
+/*
+** Currency crisis dummy 
+*/
+determinants = determinants~reg_2_data[., "currency"]; 
+
+/*
+** Commodity and manufacturing exporter
+*/
+com_exp_dum = asDF(reg_2_data[., "commod_exp"].>0.40, "comm_ex");
+man_exp_dum = asDF(reg_2_data[., "manufact"].>0.50, "manu_ex");
+
+determinants = determinants~com_exp_dum~man_exp_dum;
+
+
+/*
+** Merge with other relevant data for mnl regression
+*/
+mnl_varlist = "Pct CAB"$|"Regime Type"$|"flexible er"$|"opn"$|"ka_open"$|"gsur_3_yr"$|"fd_gap"$|"ir_r_lmf"$|"currency"$|"comm_ex"$|"manu_ex"$|"current_def";
+
+mnl_reg_data = outerJoin(reg_2_data[., 1:26], datevar_2$|group_names, determinants, datevar_2$|group_names);
+
+dfTimespands = pdTimeSpans(mnl_reg_data, mnl_varlist);
+
+saved(mnl_reg_data, spath$+sname);
+saved(dfTimespands, spath2$+sname2);

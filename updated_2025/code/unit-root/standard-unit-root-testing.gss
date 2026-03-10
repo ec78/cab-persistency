@@ -1,5 +1,6 @@
 new;
 library tspdlib;
+#include code/cab_util.src 
 
 /*
 ** Load data
@@ -188,42 +189,53 @@ reject_LM_cts = _frequency(reject_LM, 1, 1, 1, sort);
 // Plot results
 struct plotControl ctl;
 ctl = plotGetDefaults("bar");
+plotSetYRange(&ctl, 0, 100);
 
 plotLayout(3, 2, 1);
 plotSetTitle(&ctl, "ADF Test Results (%)");
 plotFreq(ctl, reject_adf, 1);
+plotAddFreqLabels(reject_adf, 1, 0, 1);
 
 plotLayout(3, 2, 2);
 plotSetTitle(&ctl, "DFGLS Test Results (%)");
 plotFreq(ctl, reject_gls, 1);
+plotAddFreqLabels(reject_gls, 1, 0, 1);
 
 plotLayout(3, 2, 3);
 plotSetTitle(&ctl, "PP Z_a Test Results (%)");
 plotFreq(ctl, reject_Za_PP, 1);
+plotAddFreqLabels(reject_Za_PP, 1, 0, 1);
 
 plotLayout(3, 2, 4);
 plotSetTitle(&ctl, "PP Z_t Test Results (%)");
 plotFreq(ctl, reject_ZT_PP, 1);
+plotAddFreqLabels(reject_ZT_PP, 1, 0, 1);
 
 plotLayout(3, 2, 5);
 plotSetTitle(&ctl, "LM Test Results (%)");
 plotFreq(ctl, reject_LM, 1);
+plotAddFreqLabels(reject_LM, 1, 0, 1);
+
+plotLayout(3, 2, 6);
+plotSetTitle(&ctl, "KPSS Test Results (%)");
+plotFreq(ctl, reject_kpss, 1);
+plotAddFreqLabels(reject_kpss, 1, 0, 1);
 
 if save_on;
     plotSave(spath $+ "unit-root-results.png", 11 | 8.5, "in");
 endif;
 
-struct plotControl ctl2;
-ctl2 = plotGetDefaults("bar");
+//struct plotControl ctl2;
+//ctl2 = plotGetDefaults("bar");
 
-plotOpenWindow();
-plotClearLayout();
-plotSetTitle(&ctl, "KPSS Test Results (%)");
-plotFreq(ctl, reject_kpss, 1);
+//plotOpenWindow();
+//plotClearLayout();
+//plotSetTitle(&ctl, "KPSS Test Results (%)");
+//plotFreq(ctl, reject_kpss, 1);
 
-if save_on;
-    plotSave(spath $+ "stationarity-tests.png", 11 | 8.5, "in");
-endif;
+//if save_on;
+//    plotSave(spath $+ "stationarity-tests.png", 11 | 8.5, "in");
+//endif;
 
 proc (1) = reclassifyRejectionRates(reject_vector);
     local to, from;

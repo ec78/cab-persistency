@@ -161,8 +161,15 @@ proc (1) = __get_test_y_w_country(data, cname, ...);
 endp;
 
 // Function to compute moving sum for panel data
-proc movingSumPanel(data, groupvar, wind);
-    local grp_names, groups, keys, N_groups, N_vars, moving_sum, st_indx, end_indx, missing_df;
+proc movingSumPanel(data, groupvar, wind, ...);
+    local dates, datevar, grp_names, groups, keys, N_groups, N_vars, moving_sum, st_indx, end_indx, missing_df;
+    
+    // Get the date variable
+    datevar = dynargsGet(1);
+    if not isempty(datevar);
+        dates = data[., datevar];
+        data = delcols(data, datevar);
+    endif;
     
     // Get column labels
     { grp_names, keys } = getColLabels(data, groupvar);
@@ -187,7 +194,11 @@ proc movingSumPanel(data, groupvar, wind);
         endif;
     endfor;
 
-    retp(groups~moving_sum);
+    if isempty(datevar);
+        retp(groups~moving_sum);
+    else;
+        retp(dates~groups~moving_sum);
+    endif;
 endp;
 
 proc (1) = movingSumc(data, wind);
@@ -270,34 +281,34 @@ proc (1) = pdCountMissings(data, varlist, groupvar);
     retp(missing_df);
 endp;
 
-proc (1) = pdTimeSpans(data, datevar, groupvar, ...);
-    local grp_names, keys, N_groups, varlist, date_fmt, dates_mat, dates_df, st_indx, end_indx;
+//proc (1) = pdTimeSpans(data, datevar, groupvar, ...);
+//    local grp_names, keys, N_groups, varlist, date_fmt, dates_mat, dates_df, st_indx, end_indx;
     
-    // Check for varlist
-    varlist = dynargsGet(1,"");
+//    // Check for varlist
+//    varlist = dynargsGet(1,"");
     
-    if not isempty(varlist);
-        retp(__pdTimeSpans_Vars(data, datevar, groupvar, varlist));
-    else;
-        // Get column labels
-        { grp_names, keys } = getColLabels(data, groupvar);
-        N_groups = rows(grp_names);
+//    if not isempty(varlist);
+//        retp(__pdTimeSpans_Vars(data, datevar, groupvar, varlist));
+//    else;
+//        // Get column labels
+//        { grp_names, keys } = getColLabels(data, groupvar);
+//        N_groups = rows(grp_names);
         
-        // Get date format
-        date_fmt = getcoldateformats(data, datevar);
+//        // Get date format
+//        date_fmt = getcoldateformats(data, datevar);
         
-        // Get indices
-        st_indx = indnv(grp_names, data[., groupvar], 1);
-        end_indx = (st_indx[2:rows(st_indx)]-1)|rows(data);
+//        // Get indices
+//        st_indx = indnv(grp_names, data[., groupvar], 1);
+//        end_indx = (st_indx[2:rows(st_indx)]-1)|rows(data);
         
-        // Loop over groups
-        dates_mat = aggregate(data[., groupvar datevar], "min", groupvar);
-        dates_mat = outerJoin(dates_mat, groupvar, aggregate(data[., groupvar datevar], "max", groupvar), groupvar);
+//        // Loop over groups
+//        dates_mat = aggregate(data[., groupvar datevar], "min", groupvar);
+//        dates_mat = outerJoin(dates_mat, groupvar, aggregate(data[., groupvar datevar], "max", groupvar), groupvar);
         
-        retp(setColNames(dates_mat, groupvar$|"Start Date"$|"End Date"));
-    endif;
+//        retp(setColNames(dates_mat, groupvar$|"Start Date"$|"End Date"));
+//    endif;
     
-endp;
+//endp;
 
 proc (1) = __pdTimeSpans_Vars(data, datevar, groupvar, varlist);
     local N_groups, grp_names, keys, date_fmt, N_vars, st_indx, end_indx, dates_mat,
@@ -452,6 +463,6 @@ proc (0) = plotAddFreqLabels(x, index, ...);
     annotationSetFont(&myAnnotation, "arial", 14);
    
     // PlotAnnotations
-    plotAddTextbox(bar_labels, seqa(1, 1, rows(bar_labels)), bar_y+4, "center"); 
+    plotAddTextbox(bar_labels, seqa(1, 1, rows(bar_labels)), bar_y+2, "center"); 
         
 endp;

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"code/mnl/python code/.venv/Scripts/python.exe\":*)",
+      "Bash(\"code/mnl/python code/.venv/Scripts/python.exe\" -c \"import docx; print\\(''python-docx available''\\)\")"
+    ]
+  }
+}

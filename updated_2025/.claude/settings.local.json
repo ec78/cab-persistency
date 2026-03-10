@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"code/mnl/python code/.venv/Scripts/python.exe\" \"code/mnl/python code/partii-mnl-clustered.py\")",
+      "Bash(\"code/mnl/python code/.venv/Scripts/python.exe\" \"code/mnl/python code/memo_mnl_top_specs_with_yearfe.py\")",
+      "Bash(\"code/mnl/python code/.venv/Scripts/python.exe\" \"code/mnl/python code/partii-mnl-subgroups.py\")",
+      "Bash(\"code/mnl/python code/.venv/Scripts/python.exe\" \"code/mnl/python code/partii-mnl-binary.py\")",
+      "Bash(python3 -:*)",
+      "Bash(python \"code/mnl/python code/apply_pass2_edits_v2.py\")",
+      "Bash(python3 -c \":*)",
+      "Read(//c/Users/eclow/AppData/Local/Programs/Python//**)",
+      "Bash(PYTHON=\"/c/Users/eclow/Documents/GitHub/cab-persistency/updated_2025/code/mnl/python code/.venv/Scripts/python\")",
+      "Bash(\"$PYTHON\" -c \":*)",
+      "Bash(PYTHONUTF8=1 \"$PYTHON\" -c \":*)",
+      "Bash(PYTHONUTF8=1 \"$PYTHON\" \"C:/Users/eclow/Documents/GitHub/cab-persistency/updated_2025/check_edits.py\")",
+      "Bash(\"code/mnl/python code/.venv/Scripts/python.exe\" check_edits.py)",
+      "Bash(\"code/mnl/python code/.venv/Scripts/python.exe\" check_edits2.py)",
+      "Bash(python \"code/mnl/python code/replication_audit.py\")",
+      "Bash(python -c \":*)",
+      "Bash(python -c \"import pptx; print\\(''python-pptx'', pptx.__version__\\)\")",
+      "Bash(pip install python-pptx)"
+    ]
+  }
+}
