@@ -190,6 +190,7 @@ reject_LM_cts = _frequency(reject_LM, 1, 1, 1, sort);
 struct plotControl ctl;
 ctl = plotGetDefaults("bar");
 plotSetYRange(&ctl, 0, 100);
+plotSetYTicLabel(&ctl, "%d%%");
 
 plotLayout(3, 2, 1);
 plotSetTitle(&ctl, "ADF Test Results (%)");

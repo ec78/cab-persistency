@@ -47,11 +47,11 @@ global_cond = global_cond~asDF(global_stationary, "Global Stationarity");
 global_cond = dftype(move(global_cond), META_TYPE_CATEGORY, "Global Stationarity");
 global_cond = setcollabels(move(global_cond), "Not Stationary"$|"Global Stationary", seqa(0, 1, 2), "Global Stationarity");
 
-saved(global_cond, spath $+ sname);
+//saved(global_cond, spath $+ sname);
 
 plotCanvasSize("px", 800|600);
 
 plotFreq(global_cond, "Global Stationarity", 0, 1);
-//plotAddFreqLabels(global_cond, "Global Stationarity", 0, 1);
+plotAddFreqLabels(global_cond, "Global Stationarity", 1, 1, 1);
 
 

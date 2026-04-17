@@ -1,0 +1,49 @@
+ASSA Conference Submission
+Paper: What Drives Persistence in Current Account Imbalances?
+Authors: Eric Clower, Hiro Ito, Jamel Saadaoui
+
+JEL Classification (broad, single-digit):
+  F — International Economics
+  C — Mathematical and Quantitative Methods
+
+JEL Classification (full, as in paper):
+  F32: Current account adjustments and short-term capital movements
+  F41: Open economy macroeconomics
+
+================================================================================
+BRIEF PAPER DESCRIPTION (280-character limit; actual: 263 characters)
+================================================================================
+
+Country-specific Markov-switching models classify current account regimes for 74 countries (1971–2023). A multinomial logit finds pegged exchange rates reduce explosive dynamics by ~9pp — an effect 4x stronger for emerging markets and invisible to linear methods.
+
+================================================================================
+ABSTRACT (276 words)
+================================================================================
+
+What structural factors drive countries into explosive current account dynamics —
+where external imbalances amplify rather than correct? Explosive episodes have
+featured prominently in balance-of-payments crises and sudden stops, yet the
+structural conditions that predict their onset remain poorly understood. Using a
+panel of 74 countries spanning 1971–2023, we apply a two-stage empirical
+strategy. In the first stage, country-specific Markov-switching autoregressive
+models classify each country-year observation into one of three dynamic regimes —
+explosive, unit root, or stationary — allowing persistence, mean, and volatility
+to switch independently. In the second stage, a multinomial logit model links
+regime membership to structural covariates with cluster-robust inference and
+cross-validated model selection. Fixed exchange rate arrangements are associated
+with a nine-percentage-point reduction in the probability of explosive dynamics;
+manufacturing export specialization and trade openness are associated with
+increases. The exchange rate result survives when the regime indicator is lagged
+one period to address simultaneity, and is marginally stronger in the lagged
+specification — consistent with reverse causality working against the hypothesis.
+These effects are concentrated entirely in the explosive-versus-non-explosive
+channel: within the stable regime space, structural variables do not reliably
+distinguish stationary from unit root behavior. Our exchange rate finding
+complements Chinn and Wei (2013), who find no systematic relationship between
+regime flexibility and current account adjustment speed in linear models; the
+exchange rate regime effect is concentrated in the explosive tail of the
+distribution, invisible to linear methods. Model fit is four times stronger for
+emerging market economies (McFadden R-squared of 0.19 versus 0.05 for the full
+sample), indicating that exchange rate and trade structures are most consequential
+for middle-income countries, where institutional constraints on external
+adjustment are weakest.

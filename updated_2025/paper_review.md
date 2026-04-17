@@ -1,0 +1,43 @@
+##What the paper does
+
+The paper asks a good and important question: not just whether current accounts are stationary, but what structural factors make countries more likely to experience stationary, unit-root, or explosive external dynamics. Empirically, it uses a two-stage design. In step 1, it estimates country-specific Markov-switching models on quarterly current account data, allowing mean, variance, and persistence to switch independently, and classifies observations into stationary, unit root, or explosive regimes. In step 2, it aggregates those classifications to the annual level and estimates a multinomial logit to explain regime membership. The headline result is that fixed exchange rate arrangements are associated with a roughly 9 percentage point lower probability of explosive dynamics, while manufacturing export specialization and trade openness are associated with higher explosive probability; the explanatory power is strongest for emerging markets and stronger post-GFC.
+
+##What the paper does well
+
+First, the paper is conceptually stronger than a standard sustainability paper because it separates short-run persistence from long-run sustainability. The discussion of local vs global stationarity and the link to both the intertemporal budget constraint and a Bohn-style stabilizing-feedback interpretation is thoughtful and gives the empirical work a solid conceptual frame.
+
+Second, the econometric strategy is well matched to the question. The paper is right that linear unit-root tests are too blunt when persistence, mean, and volatility shift over time. Adapting the more flexible independent-switching Markov framework is a meaningful improvement over older two-state “stationary vs random walk” current-account papers. In that sense, the contribution is not invention of a brand-new estimator, but rather a good transport and synthesis of earlier methods into a richer current-account application. That is a legitimate and useful contribution.
+
+Third, the paper is unusually transparent for an empirical macro draft. It does not jump straight to the preferred nonlinear model; it shows why the linear tests are inconsistent, explains the identification of regimes, discusses global stationarity conditions, uses lagged covariates to reduce simultaneity concerns, reports cross-validated log loss and BIC for model selection, and explicitly acknowledges first-stage classification uncertainty and the IIA issue in the multinomial logit. That level of candor is a strength.
+
+Fourth, the substantive result is genuinely interesting: the paper’s own robustness work shows that the structural variables mostly explain explosive versus non-explosive behavior, not stationary versus unit root within the stable space. That is an important refinement of the literature, because it suggests that exchange rate regimes matter more in the tail of the adjustment distribution than in average persistence. That is exactly the sort of nonlinear insight a regime-switching framework should uncover.
+
+##Where the paper needs improvement
+
+The title and framing overstate what step 2 actually explains.
+The paper says it is about “what drives persistence,” but its own results show that the second stage mostly explains explosive vs non-explosive outcomes, while it does not explain the distinction between stationary and unit-root regimes within the stable space. That does not kill the paper, but it means the claim should be narrowed. A title or abstract that more clearly says “what drives explosive external adjustment dynamics” would better match the evidence.
+
+The novelty relative to Clower & Ito (2012) needs to be made explicit.
+The 2012 paper already studied current-account persistence, used Markov-switching classification, and examined determinants of entering a random-walk regime. The new draft’s real advance is the move to a three-regime framework, the adoption of the independent-switching specification, the updated sample through 2023, and the claim that pegs matter mainly for explosive tail behavior. That is enough for a contribution, but the draft should say this directly, ideally in a subsection that explains exactly what is new and why some findings now differ from the older paper. Right now, a referee familiar with the 2012 paper may worry that the new draft is closer to an update than the authors intend.
+
+The explosive regime is rare and concentrated, so inference is fragile.
+The paper itself notes that explosive observations are only 134 country-years (5.5%) and heavily concentrated in a few countries such as Israel, Hungary, Malaysia, Germany, and Armenia. That means the central MNL contrast rests on a relatively small and geographically concentrated set of episodes. I would want to see at least one more robustness layer: leave-one-country-out, leave-one-region-out, or a rare-events / penalized logit version of the explosive-vs-non-explosive comparison. This is probably the single most important econometric strengthening the paper could do.
+
+The paper should propagate first-stage uncertainty more aggressively.
+The draft already acknowledges that the regime labels used in the MNL are estimated, not observed. That is exactly right, and it is a real issue. A stronger version of the paper would use posterior probabilities or regime shares rather than hard annual assignments, or bootstrap the whole two-step procedure so the second-stage uncertainty reflects step-1 classification noise. As it stands, the paper is honest about the problem, but a referee may still say that acknowledgment is not enough.
+
+Causal language should be softened.
+The phrase “fixed exchange rate arrangements reduce the probability of explosive current account dynamics” is strong language for an observational setup. Lagging the regime variable helps with simultaneity, and the lagged-peg robustness is useful, but the exchange-rate regime is still plausibly endogenous to institutional quality, reserve adequacy, capital controls, crisis vulnerability, or regional policy strategy. I would recast the main claims as associations, not causal effects, unless the paper can add a stronger identification design.
+
+The interpretation of the post-GFC result is too confident relative to the evidence.
+The paper observes stronger model fit after 2008 and links that to the G20 MAP, IMF surveillance, and Basel III. That is plausible, but it is still an interpretation, not a tested mechanism. Since those institutional developments are not directly measured, I would tone that discussion down or add direct proxies for the global financial cycle or post-crisis regulatory environment. Otherwise, a referee can say the paper is over-interpreting a fit comparison.
+
+Some design choices need a bit more defense.
+Imposing a common AR(1) structure across all countries is practical for comparability, but quarterly current-account data can easily have richer dynamics. Likewise, aggregating quarterly regimes into a single annual prevailing regime may throw away informative within-year transitions. Neither choice is fatal, but both deserve either stronger defense in the text or robustness checks.
+
+Presentation needs one cleaning pass.
+The paper sometimes shifts between 77 countries in step 1 and 74 countries in step 2; this is explainable, but it should be clarified earlier and more crisply. There are also some visible copyediting issues and a few bibliography inconsistencies. None of that changes the contribution, but it matters for how polished the paper feels.
+
+The paper moves the literature in a useful direction by showing that the meaningful action is not just “stationary or not,” but which regime countries occupy, how they switch, and which structural variables are associated with entry into explosive states. The combination of a richer three-regime classification, updated multi-country evidence, and the emerging-market result gives it real value. The main finding on fixed pegs is also interesting because it suggests exchange-rate arrangements matter more for avoiding explosive episodes than for distinguishing ordinary mean reversion from near-unit-root persistence. That is a substantive insight worth publishing.
+
+We should sharpen the novelty relative to the 2012 paper, narrow the paper’s claims to match what the second stage actually explains, and add one more serious set of robustness checks around rare explosive events and first-stage classification uncertainty, the paper would look materially stronger. 

@@ -18,7 +18,14 @@
       "Bash(python \"code/mnl/python code/replication_audit.py\")",
       "Bash(python -c \":*)",
       "Bash(python -c \"import pptx; print\\(''python-pptx'', pptx.__version__\\)\")",
-      "Bash(pip install python-pptx)"
+      "Bash(pip install python-pptx)",
+      "Bash(python -c ' *)",
+      "Bash(ls -la fOut*)",
+      "Bash(ls -la *.asc)",
+      "Bash(ls -la *.gdat)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\eclow\\Documents\\GitHub\\cab-persistency\\updated_2025"
     ]
   }
 }

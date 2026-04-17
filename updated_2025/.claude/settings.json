@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(\"code/mnl/python code/.venv/Scripts/python.exe\":*)",
-      "Bash(\"code/mnl/python code/.venv/Scripts/python.exe\" -c \"import docx; print\\(''python-docx available''\\)\")"
+      "Bash(\"code/mnl/python code/.venv/Scripts/python.exe\" -c \"import docx; print\\(''python-docx available''\\)\")",
+      "Bash(python -c \":*)",
+      "Bash(ls \"c:\\\\Users\\\\eclow\\\\Documents\\\\GitHub\\\\cab-persistency\\\\updated_2025\\\\clean-data\"\" 2>/dev/null || echo \"Directory not found \")",
+      "Bash(python3 -c \":*)",
+      "Skill(update-config)",
+      "Skill(update-config:*)"
     ]
   }
 }
